@@ -1,0 +1,2243 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fjellheimen – Oversikt over fjelleiligheten</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter & Plus Jakarta Sans -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- SheetJS for ekte Excel-filopplasting (.xlsx, .xls, .csv) -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <script src="/inventory.js" defer></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        display: ['Plus Jakarta Sans', 'sans-serif'],
+                    },
+                    colors: {
+                        cabin: {
+                            bg: '#F8F7F4',
+                            card: '#FFFFFF',
+                            forest: '#243E36',
+                            forestLight: '#315349',
+                            pine: '#E6ECE9',
+                            terracotta: '#C87D55',
+                            terracottaLight: '#F7ECE6',
+                            wood: '#D9CBB8',
+                            slate: '#2D3436',
+                            muted: '#636E72'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #F8F7F4;
+            color: #2D3436;
+            -webkit-tap-highlight-color: transparent;
+        }
+        img, video, canvas, iframe, embed, object {
+            max-inline-size: 100%;
+        }
+        img, video, canvas {
+            block-size: auto;
+        }
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        .fade-in {
+            animation: fadeIn 0.2s ease-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(4px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @media (width < 1024px) {
+            body {
+                font-size: 1rem;
+                overflow-wrap: anywhere;
+            }
+            body :is(.text-xs, .text-sm, .text-\[11px\]) {
+                font-size: 1rem;
+                line-height: 1.5;
+            }
+            body :is(button, label.cursor-pointer, input:not([type="checkbox"], [type="radio"], [type="hidden"], [type="file"]), select, textarea) {
+                min-inline-size: 44px;
+                min-block-size: 44px;
+                max-inline-size: 100%;
+            }
+            button > :is(svg, i):only-child {
+                margin-inline: auto;
+            }
+            label.cursor-pointer > input:is([type="checkbox"], [type="radio"]) {
+                flex-shrink: 0;
+            }
+            body :is(button, input, select, textarea):focus-visible {
+                outline: 2px solid #C87D55;
+                outline-offset: 2px;
+            }
+            body :is(main, #excel-preview-list) .truncate {
+                overflow: visible;
+                text-overflow: clip;
+                white-space: normal;
+            }
+            body .wrapping-controls {
+                flex-wrap: wrap;
+                overflow: visible;
+            }
+            body .wrapping-controls button {
+                white-space: normal;
+            }
+            .grid > * {
+                min-inline-size: 0;
+            }
+            #mobile-header {
+                gap: .5rem;
+            }
+            .mobile-brand {
+                min-inline-size: 0;
+            }
+            :is(#mobile-menu-toggle, #mobile-menu-close) {
+                flex-shrink: 0;
+            }
+            #sidebar {
+                height: 100dvh;
+                max-inline-size: 100%;
+                visibility: hidden;
+                transform: translateX(-100%);
+                transition: transform 200ms ease-in-out, visibility 0s linear 200ms;
+                overscroll-behavior: contain;
+            }
+            #sidebar[data-open] {
+                visibility: visible;
+                transform: translateX(0);
+                transition-delay: 0s;
+            }
+            #sidebar > :first-child {
+                overscroll-behavior: contain;
+            }
+            body.mobile-menu-open {
+                overflow: hidden;
+            }
+            #excel-modal > div {
+                max-block-size: calc(100dvh - 2rem);
+            }
+            #member-modal > div {
+                max-block-size: 100%;
+                overflow-y: auto;
+            }
+            #toast-container {
+                inset-inline: 1rem;
+                align-items: flex-end;
+            }
+        }
+
+        @media (width < 640px) {
+            body .inventory-row {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .inventory-row > :last-child {
+                justify-content: flex-end;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            #sidebar {
+                transition: none;
+            }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col lg:flex-row font-sans antialiased selection:bg-cabin-forest selection:text-white">
+
+    <!-- ==================== MOBIL TOPPHEADER ==================== -->
+    <header id="mobile-header" class="lg:hidden sticky top-0 z-40 bg-cabin-forest text-white px-4 py-3.5 shadow-md flex items-center justify-between">
+        <div class="mobile-brand flex items-center gap-2.5">
+            <div class="w-9 h-9 shrink-0 rounded-xl bg-cabin-terracotta flex items-center justify-center shadow-sm">
+                <i data-lucide="mountain-snow" class="w-5 h-5 text-white"></i>
+            </div>
+            <div class="min-w-0">
+                <h1 class="font-display font-bold text-base leading-tight truncate mobile-cabin-title">Fjellheimen</h1>
+                <p class="text-[11px] text-cabin-pine/80">Leilighet på fjellet</p>
+            </div>
+        </div>
+        <button id="mobile-menu-toggle" type="button" onclick="setMobileMenu(true)" class="p-2 rounded-xl bg-cabin-forestLight hover:bg-white/10 transition" aria-label="Åpne meny" aria-controls="sidebar" aria-expanded="false">
+            <i data-lucide="menu" class="w-6 h-6"></i>
+        </button>
+    </header>
+
+    <!-- ==================== MOBIL MENY-DRAWER ==================== -->
+    <div id="mobile-menu-overlay" onclick="setMobileMenu(false)" class="fixed inset-0 bg-black/50 z-40 hidden lg:hidden backdrop-blur-xs" aria-hidden="true"></div>
+    <aside id="sidebar" class="fixed lg:sticky top-0 left-0 z-50 h-screen w-72 bg-cabin-forest text-white flex flex-col justify-between shrink-0 shadow-xl lg:shadow-none">
+        <div class="p-5 space-y-6 overflow-y-auto no-scrollbar">
+            <!-- Brand / Tittel -->
+            <div class="flex items-center justify-between">
+                <div class="mobile-brand flex items-center gap-3">
+                    <div class="w-11 h-11 rounded-2xl bg-cabin-terracotta flex items-center justify-center shadow-md shrink-0">
+                        <i data-lucide="mountain-snow" class="w-6 h-6 text-white"></i>
+                    </div>
+                    <div class="min-w-0">
+                        <h1 class="font-display font-extrabold text-lg tracking-tight truncate sidebar-cabin-title">Fjellheimen</h1>
+                        <p class="text-xs text-cabin-pine/80">Hytte- & leilighetsoversikt</p>
+                    </div>
+                </div>
+                <button id="mobile-menu-close" type="button" onclick="setMobileMenu(false)" class="lg:hidden p-1.5 rounded-lg hover:bg-white/10" aria-label="Lukk meny">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <!-- Navigasjon -->
+            <nav class="space-y-1.5" id="main-nav">
+                <button data-tab="oversikt" onclick="switchTab('oversikt')" class="nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all">
+                    <i data-lucide="layout-dashboard" class="w-4 h-4 shrink-0"></i>
+                    <span>Oversikt</span>
+                </button>
+                <button data-tab="kjol" onclick="switchTab('kjol')" class="nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all">
+                    <i data-lucide="refrigerator" class="w-4 h-4 shrink-0"></i>
+                    <span>Kjøleskap & Fryser</span>
+                </button>
+                <button data-tab="torrvarer" onclick="switchTab('torrvarer')" class="nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all">
+                    <i data-lucide="package" class="w-4 h-4 shrink-0"></i>
+                    <span>Tørrvarer</span>
+                    <span id="nav-badge-handleliste" class="ml-auto hidden bg-cabin-terracotta text-white text-[11px] font-bold px-2 py-0.5 rounded-full">0</span>
+                </button>
+                <button data-tab="toy" onclick="switchTab('toy')" class="nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all">
+                    <i data-lucide="shirt" class="w-4 h-4 shrink-0"></i>
+                    <span>Tøy & Klær</span>
+                </button>
+                <button data-tab="bod" onclick="switchTab('bod')" class="nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all">
+                    <i data-lucide="warehouse" class="w-4 h-4 shrink-0"></i>
+                    <span>Bod & Ski</span>
+                </button>
+                <button data-tab="inneholdsliste" onclick="switchTab('inneholdsliste')" class="nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all">
+                    <i data-lucide="clipboard-list" class="w-4 h-4 shrink-0"></i>
+                    <span>Inneholdsliste</span>
+                </button>
+                <button data-tab="utvask" onclick="switchTab('utvask')" class="nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all">
+                    <i data-lucide="sparkles" class="w-4 h-4 shrink-0"></i>
+                    <span>Utvask</span>
+                </button>
+                <button data-tab="vedlikehold" onclick="switchTab('vedlikehold')" class="nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all">
+                    <i data-lucide="wrench" class="w-4 h-4 shrink-0"></i>
+                    <span>Vedlikehold</span>
+                </button>
+            </nav>
+        </div>
+
+        <!-- Bunn i sidemeny -->
+        <div class="p-4 border-t border-white/10 space-y-2">
+            <button data-tab="innstillinger" onclick="switchTab('innstillinger')" class="nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all">
+                <i data-lucide="settings" class="w-4 h-4 shrink-0"></i>
+                <span>Innstillinger & Backup</span>
+            </button>
+            <div class="px-3.5 py-2 rounded-xl bg-cabin-forestLight/60 text-[11px] text-cabin-pine/80 flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0"></span>
+                <span>Automatisk lagring</span>
+            </div>
+        </div>
+    </aside>
+
+    <!-- ==================== HOVEDINNHOLD ==================== -->
+    <main class="flex-1 min-w-0 p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto w-full">
+
+        <!-- ==================== 1. OVERSIKT (DASHBOARD) ==================== -->
+        <section id="tab-oversikt" class="tab-content fade-in space-y-6">
+            <!-- Velkomstbanner -->
+            <div class="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-cabin-wood/40 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cabin-pine text-cabin-forest text-xs font-semibold mb-2">
+                        <i data-lucide="calendar" class="w-3.5 h-3.5"></i>
+                        <span id="current-date-display">I dag</span>
+                    </div>
+                    <div class="flex items-center gap-2.5">
+                        <h2 class="font-display text-2xl sm:text-3xl font-extrabold text-cabin-slate" id="dashboard-cabin-title">Velkommen til Fjellheimen</h2>
+                        <button onclick="switchTab('innstillinger')" class="p-1.5 rounded-lg text-cabin-muted hover:text-cabin-forest hover:bg-cabin-pine/50 transition" title="Endre navn på leiligheten">
+                            <i data-lucide="pencil" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                    <p class="text-sm text-cabin-muted mt-1">Full oversikt over mat, klær, skiutstyr i boden, utvask og vedlikehold.</p>
+                </div>
+                <div class="flex flex-wrap gap-2.5">
+                    <button onclick="switchTab('utvask')" class="px-4 py-2.5 rounded-xl bg-cabin-forest hover:bg-cabin-forestLight text-white text-sm font-semibold transition flex items-center gap-2 shadow-xs">
+                        <i data-lucide="check-square" class="w-4 h-4"></i>
+                        <span>Start utvask</span>
+                    </button>
+                    <button onclick="switchTab('vedlikehold')" class="px-4 py-2.5 rounded-xl bg-cabin-terracottaLight hover:bg-cabin-terracotta hover:text-white text-cabin-terracotta text-sm font-semibold transition flex items-center gap-2">
+                        <i data-lucide="plus" class="w-4 h-4"></i>
+                        <span>Logg vedlikehold</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 5 Nøkkeltall-kort -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                <!-- Kort 1: Kjøleskap & Fryser -->
+                <div onclick="switchTab('kjol')" class="bg-white p-5 rounded-2xl shadow-sm border border-cabin-wood/40 hover:border-cabin-forest/50 transition cursor-pointer group flex flex-col justify-between">
+                    <div class="flex items-center justify-between">
+                        <div class="w-10 h-10 rounded-xl bg-sky-50 text-sky-700 flex items-center justify-center group-hover:scale-105 transition">
+                            <i data-lucide="refrigerator" class="w-5 h-5"></i>
+                        </div>
+                        <i data-lucide="arrow-up-right" class="w-4 h-4 text-cabin-muted group-hover:text-cabin-forest"></i>
+                    </div>
+                    <div class="mt-4">
+                        <p class="text-xs font-semibold uppercase tracking-wider text-cabin-muted">Kjøl & Frys</p>
+                        <p class="text-2xl font-display font-bold text-cabin-slate mt-0.5" id="stat-kjol-total">0 varer</p>
+                        <p class="text-xs text-cabin-muted mt-1 truncate" id="stat-kjol-sub">0 kjøl · 0 frys</p>
+                    </div>
+                </div>
+
+                <!-- Kort 2: Tørrvarer -->
+                <div onclick="switchTab('torrvarer')" class="bg-white p-5 rounded-2xl shadow-sm border border-cabin-wood/40 hover:border-cabin-forest/50 transition cursor-pointer group flex flex-col justify-between">
+                    <div class="flex items-center justify-between">
+                        <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center group-hover:scale-105 transition">
+                            <i data-lucide="package" class="w-5 h-5"></i>
+                        </div>
+                        <i data-lucide="arrow-up-right" class="w-4 h-4 text-cabin-muted group-hover:text-cabin-forest"></i>
+                    </div>
+                    <div class="mt-4">
+                        <p class="text-xs font-semibold uppercase tracking-wider text-cabin-muted">Tørrvarer</p>
+                        <p class="text-2xl font-display font-bold text-cabin-slate mt-0.5" id="stat-torr-total">0 varer</p>
+                        <p class="text-xs font-medium mt-1 truncate" id="stat-torr-sub">Alt på stell</p>
+                    </div>
+                </div>
+
+                <!-- Kort 3: Tøy per familiemedlem -->
+                <div onclick="switchTab('toy')" class="bg-white p-5 rounded-2xl shadow-sm border border-cabin-wood/40 hover:border-cabin-forest/50 transition cursor-pointer group flex flex-col justify-between">
+                    <div class="flex items-center justify-between">
+                        <div class="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-700 flex items-center justify-center group-hover:scale-105 transition">
+                            <i data-lucide="shirt" class="w-5 h-5"></i>
+                        </div>
+                        <i data-lucide="arrow-up-right" class="w-4 h-4 text-cabin-muted group-hover:text-cabin-forest"></i>
+                    </div>
+                    <div class="mt-4">
+                        <p class="text-xs font-semibold uppercase tracking-wider text-cabin-muted">Tøy & Klær</p>
+                        <p class="text-2xl font-display font-bold text-cabin-slate mt-0.5" id="stat-toy-total">0 plagg</p>
+                        <p class="text-xs text-cabin-muted mt-1 truncate" id="stat-toy-sub">Fordelt på 4 pers.</p>
+                    </div>
+                </div>
+
+                <!-- Kort 4: Bod & Ski -->
+                <div onclick="switchTab('bod')" class="bg-white p-5 rounded-2xl shadow-sm border border-cabin-wood/40 hover:border-cabin-forest/50 transition cursor-pointer group flex flex-col justify-between">
+                    <div class="flex items-center justify-between">
+                        <div class="w-10 h-10 rounded-xl bg-teal-50 text-teal-800 flex items-center justify-center group-hover:scale-105 transition">
+                            <i data-lucide="warehouse" class="w-5 h-5"></i>
+                        </div>
+                        <i data-lucide="arrow-up-right" class="w-4 h-4 text-cabin-muted group-hover:text-cabin-forest"></i>
+                    </div>
+                    <div class="mt-4">
+                        <p class="text-xs font-semibold uppercase tracking-wider text-cabin-muted">Bod & Ski</p>
+                        <p class="text-2xl font-display font-bold text-cabin-slate mt-0.5" id="stat-bod-total">0 enheter</p>
+                        <p class="text-xs text-cabin-muted mt-1 truncate" id="stat-bod-sub">0 ski · 0 støvler</p>
+                    </div>
+                </div>
+
+                <!-- Kort 5: Utvask & Vedlikehold -->
+                <div onclick="switchTab('utvask')" class="bg-white p-5 rounded-2xl shadow-sm border border-cabin-wood/40 hover:border-cabin-forest/50 transition cursor-pointer group flex flex-col justify-between">
+                    <div class="flex items-center justify-between">
+                        <div class="w-10 h-10 rounded-xl bg-emerald-50 text-cabin-forest flex items-center justify-center group-hover:scale-105 transition">
+                            <i data-lucide="sparkles" class="w-5 h-5"></i>
+                        </div>
+                        <span class="text-xs font-bold text-cabin-forest" id="stat-utvask-percent">0%</span>
+                    </div>
+                    <div class="mt-4">
+                        <p class="text-xs font-semibold uppercase tracking-wider text-cabin-muted">Utvask</p>
+                        <div class="w-full bg-gray-100 h-2 rounded-full mt-2 overflow-hidden">
+                            <div id="stat-utvask-bar" class="bg-cabin-forest h-full rounded-full transition-all duration-300" style="width: 0%"></div>
+                        </div>
+                        <p class="text-xs text-cabin-muted mt-1.5 truncate" id="stat-vedlikehold-sub">Siste vedlikehold: -</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Detaljert overblikk på forsiden (3 kolonner) -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Handleliste (Tørrvarer merket Kjøp inn) -->
+                <div class="bg-white rounded-2xl p-5 shadow-sm border border-cabin-wood/40 flex flex-col">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="font-display font-bold text-base text-cabin-slate flex items-center gap-2">
+                            <i data-lucide="shopping-cart" class="w-4 h-4 text-cabin-terracotta"></i>
+                            <span>Handleliste (Tørrvarer)</span>
+                        </h3>
+                        <button onclick="switchTab('torrvarer')" class="text-xs font-semibold text-cabin-forest hover:underline">Se alle</button>
+                    </div>
+                    <div id="dashboard-shopping-list" class="space-y-2 flex-1">
+                        <!-- Fylles dynamisk -->
+                    </div>
+                </div>
+
+                <!-- Tøy per familiemedlem -->
+                <div class="bg-white rounded-2xl p-5 shadow-sm border border-cabin-wood/40 flex flex-col">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="font-display font-bold text-base text-cabin-slate flex items-center gap-2">
+                            <i data-lucide="users" class="w-4 h-4 text-cabin-forest"></i>
+                            <span>Tøy per familiemedlem</span>
+                        </h3>
+                        <button onclick="switchTab('toy')" class="text-xs font-semibold text-cabin-forest hover:underline">Administrer</button>
+                    </div>
+                    <div id="dashboard-family-clothes" class="space-y-2.5 flex-1">
+                        <!-- Fylles dynamisk -->
+                    </div>
+                </div>
+
+                <!-- Siste utførte vedlikehold -->
+                <div class="bg-white rounded-2xl p-5 shadow-sm border border-cabin-wood/40 flex flex-col">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="font-display font-bold text-base text-cabin-slate flex items-center gap-2">
+                            <i data-lucide="wrench" class="w-4 h-4 text-cabin-terracotta"></i>
+                            <span>Siste vedlikehold</span>
+                        </h3>
+                        <button onclick="switchTab('vedlikehold')" class="text-xs font-semibold text-cabin-forest hover:underline">Hele loggen</button>
+                    </div>
+                    <div id="dashboard-maintenance-list" class="space-y-3 flex-1">
+                        <!-- Fylles dynamisk -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== 2. KJØLESKAP & FRYSER ==================== -->
+        <section id="tab-kjol" class="tab-content hidden fade-in space-y-6">
+            <div>
+                <h2 class="font-display text-2xl font-bold text-cabin-slate">Kjøleskap & Fryser</h2>
+                <p class="text-sm text-cabin-muted">Hold oversikt over ferskvarer og frysevarer i leiligheten.</p>
+            </div>
+
+            <!-- Skjema: Legg til vare -->
+            <form onsubmit="addFridgeItem(event)" class="bg-white p-5 rounded-2xl shadow-sm border border-cabin-wood/40 grid grid-cols-1 sm:grid-cols-12 gap-3">
+                <div class="sm:col-span-4">
+                    <label class="block text-xs font-semibold text-cabin-muted mb-1">Varenavn *</label>
+                    <input type="text" id="kjol-name" required placeholder="F.eks. Melk, Bacon, Frossen pizza..." class="w-full rounded-xl border border-gray-200 px-3.5 py-2.5 text-sm focus:outline-none focus:border-cabin-forest">
+                </div>
+                <div class="sm:col-span-3">
+                    <label class="block text-xs font-semibold text-cabin-muted mb-1">Plassering</label>
+                    <select id="kjol-location" class="w-full rounded-xl border border-gray-200 bg-cabin-bg/50 px-3 py-2.5 text-sm focus:outline-none focus:border-cabin-forest">
+                        <option value="Kjøleskap">❄️ Kjøleskap</option>
+                        <option value="Fryser">🧊 Fryser</option>
+                    </select>
+                </div>
+                <div class="sm:col-span-2">
+                    <label class="block text-xs font-semibold text-cabin-muted mb-1">Antall</label>
+                    <input type="number" id="kjol-qty" value="1" min="1" max="99" class="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm focus:outline-none focus:border-cabin-forest">
+                </div>
+                <div class="sm:col-span-3">
+                    <label class="block text-xs font-semibold text-cabin-muted mb-1">Utløpsdato / Notat</label>
+                    <input type="text" id="kjol-note" placeholder="F.eks. Best før 12.12" class="w-full rounded-xl border border-gray-200 px-3.5 py-2.5 text-sm focus:outline-none focus:border-cabin-forest">
+                </div>
+                <div class="sm:col-span-12 flex justify-end pt-1">
+                    <button type="submit" class="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-cabin-forest hover:bg-cabin-forestLight text-white font-semibold text-sm transition flex items-center justify-center gap-2">
+                        <i data-lucide="plus" class="w-4 h-4"></i>
+                        <span>Legg til vare</span>
+                    </button>
+                </div>
+            </form>
+
+            <!-- To kolonner: Kjøleskap og Fryser -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Kjøleskap -->
+                <div class="bg-white rounded-2xl p-5 shadow-sm border border-cabin-wood/40 space-y-4">
+                    <div class="flex items-center justify-between border-b border-gray-100 pb-3">
+                        <div class="flex items-center gap-2.5">
+                            <span class="w-8 h-8 rounded-lg bg-sky-50 text-sky-700 flex items-center justify-center">
+                                <i data-lucide="thermometer-snowflake" class="w-4 h-4"></i>
+                            </span>
+                            <h3 class="font-display font-bold text-lg text-cabin-slate">Kjøleskap</h3>
+                        </div>
+                        <span id="count-kjoleskap" class="text-xs font-bold px-2.5 py-1 rounded-full bg-sky-50 text-sky-800">0 varer</span>
+                    </div>
+                    <div id="list-kjoleskap" class="space-y-2.5"></div>
+                </div>
+
+                <!-- Fryser -->
+                <div class="bg-white rounded-2xl p-5 shadow-sm border border-cabin-wood/40 space-y-4">
+                    <div class="flex items-center justify-between border-b border-gray-100 pb-3">
+                        <div class="flex items-center gap-2.5">
+                            <span class="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-700 flex items-center justify-center">
+                                <i data-lucide="snowflake" class="w-4 h-4"></i>
+                            </span>
+                            <h3 class="font-display font-bold text-lg text-cabin-slate">Fryser</h3>
+                        </div>
+                        <span id="count-fryser" class="text-xs font-bold px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-800">0 varer</span>
+                    </div>
+                    <div id="list-fryser" class="space-y-2.5"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== 3. TØRRVARER ==================== -->
+        <section id="tab-torrvarer" class="tab-content hidden fade-in space-y-6">
+            <div>
+                <h2 class="font-display text-2xl font-bold text-cabin-slate">Tørrvarer & Skapmat</h2>
+                <p class="text-sm text-cabin-muted">Kryss av «Kjøp inn» når det begynner å bli tomt – da havner varen automatisk på handlelisten.</p>
+            </div>
+
+            <!-- Skjema: Legg til tørrvare -->
+            <form onsubmit="addDryGood(event)" class="bg-white p-5 rounded-2xl shadow-sm border border-cabin-wood/40 grid grid-cols-1 sm:grid-cols-12 gap-3">
+                <div class="sm:col-span-4">
+                    <label class="block text-xs font-semibold text-cabin-muted mb-1">Varenavn *</label>
+                    <input type="text" id="torr-name" required placeholder="F.eks. Kaffe, Havregryn, Pasta..." class="w-full rounded-xl border border-gray-200 px-3.5 py-2.5 text-sm focus:outline-none focus:border-cabin-forest">
+                </div>
+                <div class="sm:col-span-3">
+                    <label class="block text-xs font-semibold text-cabin-muted mb-1">Kategori</label>
+                    <select id="torr-category" class="w-full rounded-xl border border-gray-200 bg-cabin-bg/50 px-3 py-2.5 text-sm focus:outline-none focus:border-cabin-forest">
+                        <option value="Frokost & Pålegg">🥣 Frokost & Pålegg</option>
+                        <option value="Middag & Hermetikk">🍝 Middag & Hermetikk</option>
+                        <option value="Baking & Krydder">🧂 Baking & Krydder</option>
+                        <option value="Drikke & Kos">☕ Drikke & Kos</option>
+                    </select>
+                </div>
+                <div class="sm:col-span-3">
+                    <label class="block text-xs font-semibold text-cabin-muted mb-1">Mengde / Status</label>
+                    <input type="text" id="torr-amount" placeholder="F.eks. 2 poser, Halvfull boks" class="w-full rounded-xl border border-gray-200 px-3.5 py-2.5 text-sm focus:outline-none focus:border-cabin-forest">
+                </div>
+                <div class="sm:col-span-2 flex items-end">
+                    <label class="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border border-gray-200 bg-cabin-bg/40 cursor-pointer select-none text-sm font-medium">
+                        <input type="checkbox" id="torr-buy" class="w-4 h-4 accent-cabin-terracotta rounded">
+                        <span>Kjøp inn</span>
+                    </label>
+                </div>
+                <div class="sm:col-span-12 flex justify-end pt-1">
+                    <button type="submit" class="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-cabin-forest hover:bg-cabin-forestLight text-white font-semibold text-sm transition flex items-center justify-center gap-2">
+                        <i data-lucide="plus" class="w-4 h-4"></i>
+                        <span>Legg til tørrvare</span>
+                    </button>
+                </div>
+            </form>
+
+            <!-- Søk & Filter -->
+            <div class="flex flex-col sm:flex-row gap-3 justify-between">
+                <div class="relative flex-1">
+                    <i data-lucide="search" class="w-4 h-4 text-cabin-muted absolute left-3.5 top-1/2 -translate-y-1/2"></i>
+                    <input type="text" id="torr-search" oninput="renderDryGoods()" placeholder="Søk i tørrvarer..." class="w-full bg-white rounded-xl border border-cabin-wood/40 pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:border-cabin-forest">
+                </div>
+                <div class="flex gap-2">
+                    <button id="filter-torr-all" onclick="setDryFilter('ALL')" class="px-4 py-2.5 rounded-xl text-sm font-semibold bg-cabin-forest text-white transition">Alle</button>
+                    <button id="filter-torr-buy" onclick="setDryFilter('BUY')" class="px-4 py-2.5 rounded-xl text-sm font-semibold bg-white text-cabin-slate border border-cabin-wood/40 transition flex items-center gap-1.5">
+                        <i data-lucide="shopping-cart" class="w-3.5 h-3.5 text-cabin-terracotta"></i>
+                        <span>Må kjøpes inn</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Liste -->
+            <div id="list-torrvarer" class="grid grid-cols-1 md:grid-cols-2 gap-3"></div>
+        </section>
+
+        <!-- ==================== 4. TØY & KLÆR PER FAMILIEMEDLEM ==================== -->
+        <section id="tab-toy" class="tab-content hidden fade-in space-y-6">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                    <h2 class="font-display text-2xl font-bold text-cabin-slate">Tøy & Klær per familiemedlem</h2>
+                    <p class="text-sm text-cabin-muted">Oversikt over hva hver enkelt har liggende fast i skap og skuffer i leiligheten.</p>
+                </div>
+                <button onclick="openNewMemberModal()" class="px-4 py-2.5 rounded-xl bg-cabin-forest hover:bg-cabin-forestLight text-white text-sm font-semibold transition flex items-center gap-2 self-start sm:self-auto">
+                    <i data-lucide="user-plus" class="w-4 h-4"></i>
+                    <span>Nytt familiemedlem</span>
+                </button>
+            </div>
+
+            <!-- Faner for familiemedlemmer -->
+            <div id="family-tabs" class="wrapping-controls flex items-center gap-2 overflow-x-auto no-scrollbar pb-1"></div>
+
+            <!-- Aktivt familiemedlem kort -->
+            <div id="active-member-container" class="bg-white rounded-2xl p-5 sm:p-6 shadow-sm border border-cabin-wood/40 space-y-6"></div>
+        </section>
+
+        <!-- ==================== 5. BOD & SKI ==================== -->
+        <section id="tab-bod" class="tab-content hidden fade-in space-y-6">
+            <div>
+                <h2 class="font-display text-2xl font-bold text-cabin-slate">Bod, Ski & Skistøvler</h2>
+                <p class="text-sm text-cabin-muted">Oversikt over langrennsski, langrennsko, alpinski, skistøvler, staver og annet utstyr som står lagret i boden.</p>
+            </div>
+
+            <!-- Skjema for å legge til / redigere utstyr i boden -->
+            <form onsubmit="saveStorageItem(event)" class="bg-white p-5 rounded-2xl shadow-sm border border-cabin-wood/40 space-y-4">
+                <div class="flex items-center justify-between">
+                    <h3 class="font-display font-bold text-base text-cabin-slate flex items-center gap-2" id="bod-form-title">
+                        <i data-lucide="plus-circle" class="w-4 h-4 text-cabin-forest"></i>
+                        <span>Registrer utstyr i boden</span>
+                    </h3>
+                    <button type="button" id="bod-cancel-edit" onclick="cancelEditStorageItem()" class="hidden text-xs font-semibold text-cabin-terracotta hover:underline">
+                        Avbryt redigering
+                    </button>
+                </div>
+                <input type="hidden" id="bod-edit-id" value="">
+
+                <div class="grid grid-cols-1 sm:grid-cols-12 gap-3">
+                    <div class="sm:col-span-4">
+                        <label class="block text-xs font-semibold text-cabin-muted mb-1">Type / Navn *</label>
+                        <input type="text" id="bod-name" required placeholder="F.eks. Fischer Twin Skin Pro, Alpinstøvler..." class="w-full rounded-xl border border-gray-200 px-3.5 py-2.5 text-sm focus:outline-none focus:border-cabin-forest">
+                    </div>
+                    <div class="sm:col-span-3">
+                        <label class="block text-xs font-semibold text-cabin-muted mb-1">Kategori</label>
+                        <select id="bod-category" class="w-full rounded-xl border border-gray-200 bg-cabin-bg/50 px-3 py-2.5 text-sm focus:outline-none focus:border-cabin-forest">
+                            <option value="Langrennsski">🎿 Langrennsski</option>
+                            <option value="Langrennsko">🥾 Langrennsko</option>
+                            <option value="Alpin / Topptur">⛷️ Alpin / Topptur</option>
+                            <option value="Skistøvler">🥾 Skistøvler</option>
+                            <option value="Staver & Annet">🥢 Staver & Annet</option>
+                        </select>
+                    </div>
+                    <div class="sm:col-span-3">
+                        <label class="block text-xs font-semibold text-cabin-muted mb-1">Eier (Familiemedlem)</label>
+                        <select id="bod-owner" class="w-full rounded-xl border border-gray-200 bg-cabin-bg/50 px-3 py-2.5 text-sm focus:outline-none focus:border-cabin-forest"></select>
+                    </div>
+                    <div class="sm:col-span-2">
+                        <label class="block text-xs font-semibold text-cabin-muted mb-1">Lengde / Str.</label>
+                        <input type="text" id="bod-size" placeholder="197 cm / Str. 42" class="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm focus:outline-none focus:border-cabin-forest">
+                    </div>
+                    <div class="sm:col-span-9">
+                        <label class="block text-xs font-semibold text-cabin-muted mb-1">Notat (smøring, tilstand, plassering i boden)</label>
+                        <input type="text" id="bod-note" placeholder="F.eks. Felleski, nypreppet i vår, står i innerste stativ" class="w-full rounded-xl border border-gray-200 px-3.5 py-2.5 text-sm focus:outline-none focus:border-cabin-forest">
+                    </div>
+                    <div class="sm:col-span-3 flex items-end">
+                        <button type="submit" id="bod-submit-btn" class="w-full py-2.5 px-4 rounded-xl bg-cabin-forest hover:bg-cabin-forestLight text-white font-semibold text-sm transition flex items-center justify-center gap-2">
+                            <i data-lucide="save" class="w-4 h-4"></i>
+                            <span>Legg i boden</span>
+                        </button>
+                    </div>
+                </div>
+            </form>
+
+            <!-- Filtrering og søk -->
+            <div class="space-y-3">
+                <div class="flex flex-col sm:flex-row gap-3">
+                    <div class="relative flex-1">
+                        <i data-lucide="search" class="w-4 h-4 text-cabin-muted absolute left-3.5 top-1/2 -translate-y-1/2"></i>
+                        <input type="text" id="bod-search" oninput="renderStorageItems()" placeholder="Søk på ski, støvler, lengde, størrelse eller notat..." class="w-full bg-white rounded-xl border border-cabin-wood/40 pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:border-cabin-forest">
+                    </div>
+                    <select id="bod-filter-owner" onchange="renderStorageItems()" class="sm:w-52 bg-white rounded-xl border border-cabin-wood/40 px-3.5 py-2.5 text-sm font-medium focus:outline-none focus:border-cabin-forest">
+                        <option value="ALLE">Alle familiemedlemmer</option>
+                    </select>
+                </div>
+
+                <!-- Kategori-knapper -->
+                <div class="wrapping-controls flex items-center gap-2 overflow-x-auto no-scrollbar pb-1" id="bod-category-filters">
+                    <button onclick="setStorageCategoryFilter('ALLE')" data-cat="ALLE" class="bod-cat-btn px-3.5 py-2 rounded-xl text-xs font-semibold bg-cabin-forest text-white whitespace-nowrap transition">Alle</button>
+                    <button onclick="setStorageCategoryFilter('Langrennsski')" data-cat="Langrennsski" class="bod-cat-btn px-3.5 py-2 rounded-xl text-xs font-semibold bg-white text-cabin-slate border border-cabin-wood/40 whitespace-nowrap transition">🎿 Langrennsski</button>
+                    <button onclick="setStorageCategoryFilter('Langrennsko')" data-cat="Langrennsko" class="bod-cat-btn px-3.5 py-2 rounded-xl text-xs font-semibold bg-white text-cabin-slate border border-cabin-wood/40 whitespace-nowrap transition">🥾 Langrennsko</button>
+                    <button onclick="setStorageCategoryFilter('Alpin / Topptur')" data-cat="Alpin / Topptur" class="bod-cat-btn px-3.5 py-2 rounded-xl text-xs font-semibold bg-white text-cabin-slate border border-cabin-wood/40 whitespace-nowrap transition">⛷️ Alpin / Topptur</button>
+                    <button onclick="setStorageCategoryFilter('Skistøvler')" data-cat="Skistøvler" class="bod-cat-btn px-3.5 py-2 rounded-xl text-xs font-semibold bg-white text-cabin-slate border border-cabin-wood/40 whitespace-nowrap transition">🥾 Skistøvler</button>
+                    <button onclick="setStorageCategoryFilter('Staver & Annet')" data-cat="Staver & Annet" class="bod-cat-btn px-3.5 py-2 rounded-xl text-xs font-semibold bg-white text-cabin-slate border border-cabin-wood/40 whitespace-nowrap transition">🥢 Staver & Annet</button>
+                </div>
+            </div>
+
+            <!-- Liste over bodutstyr -->
+            <div id="list-bod" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+        </section>
+
+        <section id="tab-inneholdsliste" aria-labelledby="inventory-title" class="tab-content hidden fade-in space-y-6">
+            <header class="rounded-2xl bg-cabin-forest p-5 text-white sm:p-7">
+                <p class="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-cabin-wood">
+                    <i data-lucide="clipboard-list" class="h-4 w-4 shrink-0" aria-hidden="true"></i>
+                    Inventar på hytta
+                </p>
+                <h2 id="inventory-title" class="font-display text-2xl font-bold">Inneholdsliste</h2>
+                <p class="mt-2 max-w-prose text-sm text-cabin-pine">Legg til ting og antall i hver kategori. Listen lagres automatisk for denne nettleseren.</p>
+            </header>
+            <div class="flex flex-wrap items-center gap-3" data-inventory-feedback>
+                <p role="status" class="text-sm text-cabin-muted" data-inventory-status>Laster inneholdslisten …</p>
+                <button type="button" data-inventory-retry class="hidden min-h-[44px] rounded-xl border border-cabin-wood bg-white px-4 text-sm font-semibold text-cabin-forest hover:bg-cabin-pine">Prøv igjen</button>
+            </div>
+            <div class="grid grid-cols-1 items-start gap-5 xl:grid-cols-2" data-inventory-categories></div>
+            <template data-inventory-category>
+                <section class="min-w-0 rounded-2xl border border-cabin-wood/50 bg-white shadow-sm">
+                    <div class="flex flex-wrap items-center gap-3 border-b border-cabin-wood/40 px-4 py-4 sm:px-5">
+                        <span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-cabin-pine text-cabin-forest">
+                            <i class="h-5 w-5" aria-hidden="true"></i>
+                        </span>
+                        <h3 class="min-w-0 flex-1 break-words font-display font-bold text-cabin-forest"></h3>
+                        <span data-inventory-total class="hidden rounded-full bg-cabin-bg px-3 py-1 text-xs font-semibold tabular-nums text-cabin-muted"></span>
+                    </div>
+                    <fieldset disabled class="min-w-0 space-y-4 p-4 disabled:opacity-60 sm:p-5">
+                        <legend class="sr-only"></legend>
+                        <form class="space-y-3">
+                            <div class="grid grid-cols-[minmax(0,1fr)_5.5rem] gap-3">
+                                <label class="min-w-0 space-y-1 text-sm font-semibold">
+                                    <span>Gjenstand</span>
+                                    <input name="name" type="text" maxlength="120" required class="block min-h-[44px] w-full rounded-xl border border-cabin-wood/70 px-3 py-2 text-sm font-normal focus:border-cabin-forest">
+                                </label>
+                                <label class="min-w-0 space-y-1 text-sm font-semibold">
+                                    <span>Antall</span>
+                                    <input name="quantity" type="number" min="1" max="999999" step="1" value="1" required class="block min-h-[44px] w-full rounded-xl border border-cabin-wood/70 px-3 py-2 text-sm font-normal focus:border-cabin-forest">
+                                </label>
+                            </div>
+                            <div class="flex flex-wrap gap-2">
+                                <button type="submit" class="min-h-[44px] rounded-xl bg-cabin-forest px-4 text-sm font-semibold text-white transition hover:bg-cabin-forestLight">Legg til</button>
+                                <button type="button" data-inventory-cancel class="hidden min-h-[44px] rounded-xl border border-cabin-wood/60 px-4 text-sm font-semibold text-cabin-forest hover:bg-cabin-pine">Avbryt</button>
+                            </div>
+                        </form>
+                        <p role="status" class="break-words text-sm empty:sr-only" data-inventory-message></p>
+                        <p class="hidden rounded-xl border border-dashed border-cabin-wood/70 px-3 py-2.5 text-sm text-cabin-muted" data-inventory-empty>Ingen gjenstander lagt til ennå.</p>
+                        <ul data-inventory-items class="divide-y divide-cabin-wood/40"></ul>
+                    </fieldset>
+                </section>
+            </template>
+            <template data-inventory-item>
+                <li class="flex flex-wrap items-center gap-x-3 gap-y-1 py-2">
+                    <span data-inventory-name class="min-w-0 flex-1 basis-24 break-words text-sm font-medium [overflow-wrap:anywhere]"></span>
+                    <span data-inventory-quantity class="rounded-full bg-cabin-pine px-2.5 py-1 text-xs font-semibold tabular-nums text-cabin-forest"></span>
+                    <div class="ml-auto flex flex-wrap gap-1">
+                        <button type="button" data-inventory-edit class="min-h-[44px] rounded-lg px-2 text-sm font-semibold text-cabin-forest hover:bg-cabin-pine">Endre</button>
+                        <button type="button" data-inventory-remove class="min-h-[44px] rounded-lg px-2 text-sm font-semibold text-red-700 hover:bg-red-50">Slett</button>
+                    </div>
+                </li>
+            </template>
+        </section>
+
+        <!-- ==================== 6. UTVASK (SJEKKLISTE & EXCEL-IMPORT) ==================== -->
+        <section id="tab-utvask" class="tab-content hidden fade-in space-y-6">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                    <h2 class="font-display text-2xl font-bold text-cabin-slate">Sjekkliste for utvask</h2>
+                    <p class="text-sm text-cabin-muted">Kryss av punktene før avreise, eller importer din egen sjekkliste fra Excel.</p>
+                </div>
+                <div class="flex flex-wrap gap-2.5">
+                    <button onclick="openExcelModal()" class="px-4 py-2.5 rounded-xl bg-cabin-forest hover:bg-cabin-forestLight text-white text-sm font-semibold transition flex items-center gap-2 shadow-xs">
+                        <i data-lucide="file-spreadsheet" class="w-4 h-4"></i>
+                        <span>Importer fra Excel</span>
+                    </button>
+                    <button onclick="resetCleaningChecks()" class="px-4 py-2.5 rounded-xl bg-white hover:bg-gray-50 text-cabin-slate border border-cabin-wood/50 text-sm font-semibold transition flex items-center gap-2">
+                        <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+                        <span>Nullstill alle avkrysninger</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Fremdriftsbar -->
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-cabin-wood/40 space-y-2.5">
+                <div class="flex items-center justify-between">
+                    <span class="text-sm font-bold text-cabin-slate" id="utvask-progress-text">0 av 0 oppgaver fullført</span>
+                    <span class="text-sm font-extrabold text-cabin-forest" id="utvask-progress-percent">0%</span>
+                </div>
+                <div class="w-full h-3 bg-gray-100 rounded-full overflow-hidden">
+                    <div id="utvask-progress-bar" class="h-full bg-cabin-forest rounded-full transition-all duration-300" style="width: 0%"></div>
+                </div>
+            </div>
+
+            <!-- Legg til nytt punkt manuelt -->
+            <form onsubmit="addCleaningTask(event)" class="bg-white p-4 rounded-2xl shadow-sm border border-cabin-wood/40 flex flex-col sm:flex-row gap-3">
+                <select id="utvask-room" class="sm:w-48 rounded-xl border border-gray-200 bg-cabin-bg/50 px-3 py-2.5 text-sm focus:outline-none focus:border-cabin-forest">
+                    <option value="Stue & Kjøkken">Stue & Kjøkken</option>
+                    <option value="Bad">Bad</option>
+                    <option value="Soverom">Soverom</option>
+                    <option value="Gang & Bod">Gang & Bod</option>
+                </select>
+                <input type="text" id="utvask-task" required placeholder="Legg til nytt utvaskpunkt (f.eks. Tøm kaffetrakter og vannkoker)..." class="flex-1 rounded-xl border border-gray-200 px-3.5 py-2.5 text-sm focus:outline-none focus:border-cabin-forest">
+                <button type="submit" class="px-5 py-2.5 rounded-xl bg-cabin-terracotta hover:opacity-90 text-white font-semibold text-sm transition flex items-center justify-center gap-1.5">
+                    <i data-lucide="plus" class="w-4 h-4"></i>
+                    <span>Legg til</span>
+                </button>
+            </form>
+
+            <!-- Sjekkliste gruppert etter rom -->
+            <div id="cleaning-checklist-container" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
+        </section>
+
+        <!-- ==================== 7. VEDLIKEHOLD ==================== -->
+        <section id="tab-vedlikehold" class="tab-content hidden fade-in space-y-6">
+            <div>
+                <h2 class="font-display text-2xl font-bold text-cabin-slate">Vedlikeholdslogg</h2>
+                <p class="text-sm text-cabin-muted">Dokumenter hva som er utført, hvem som gjorde det og når det ble gjort.</p>
+            </div>
+
+            <!-- Skjema: Nytt vedlikehold -->
+            <form onsubmit="addMaintenanceItem(event)" class="bg-white p-5 rounded-2xl shadow-sm border border-cabin-wood/40 space-y-4">
+                <h3 class="font-display font-bold text-base text-cabin-slate flex items-center gap-2">
+                    <i data-lucide="plus-circle" class="w-4 h-4 text-cabin-forest"></i>
+                    <span>Registrer utført vedlikehold</span>
+                </h3>
+                <div class="grid grid-cols-1 sm:grid-cols-12 gap-3">
+                    <div class="sm:col-span-3">
+                        <label class="block text-xs font-semibold text-cabin-muted mb-1">Dato *</label>
+                        <input type="date" id="maint-date" required class="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm focus:outline-none focus:border-cabin-forest">
+                    </div>
+                    <div class="sm:col-span-3">
+                        <label class="block text-xs font-semibold text-cabin-muted mb-1">Kategori</label>
+                        <select id="maint-category" class="w-full rounded-xl border border-gray-200 bg-cabin-bg/50 px-3 py-2.5 text-sm focus:outline-none focus:border-cabin-forest">
+                            <option value="VVS & Vann">💧 VVS & Vann</option>
+                            <option value="Elektro & Varme">⚡ Elektro & Varme</option>
+                            <option value="Maling & Overflater">🖌️ Maling & Overflater</option>
+                            <option value="Hvitevarer">🧺 Hvitevarer</option>
+                            <option value="Annet">🛠️ Annet</option>
+                        </select>
+                    </div>
+                    <div class="sm:col-span-4">
+                        <label class="block text-xs font-semibold text-cabin-muted mb-1">Hva ble gjort? (Tittel) *</label>
+                        <input type="text" id="maint-title" required placeholder="F.eks. Renset sluk på bad og byttet filter" class="w-full rounded-xl border border-gray-200 px-3.5 py-2.5 text-sm focus:outline-none focus:border-cabin-forest">
+                    </div>
+                    <div class="sm:col-span-2">
+                        <label class="block text-xs font-semibold text-cabin-muted mb-1">Utført av</label>
+                        <input type="text" id="maint-by" placeholder="F.eks. Far" class="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm focus:outline-none focus:border-cabin-forest">
+                    </div>
+                    <div class="sm:col-span-9">
+                        <label class="block text-xs font-semibold text-cabin-muted mb-1">Detaljer / Kostnad / Garantinfo</label>
+                        <input type="text" id="maint-details" placeholder="F.eks. Kjøpt nytt filter hos rørlegger (450 kr). Kvittering i perm." class="w-full rounded-xl border border-gray-200 px-3.5 py-2.5 text-sm focus:outline-none focus:border-cabin-forest">
+                    </div>
+                    <div class="sm:col-span-3 flex items-end">
+                        <button type="submit" class="w-full py-2.5 px-4 rounded-xl bg-cabin-forest hover:bg-cabin-forestLight text-white font-semibold text-sm transition flex items-center justify-center gap-2">
+                            <i data-lucide="save" class="w-4 h-4"></i>
+                            <span>Lagre i logg</span>
+                        </button>
+                    </div>
+                </div>
+            </form>
+
+            <!-- Filter på kategori -->
+            <div class="wrapping-controls flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
+                <button onclick="setMaintFilter('ALLE')" data-mcat="ALLE" class="maint-filter-btn px-3.5 py-2 rounded-xl text-xs font-semibold bg-cabin-forest text-white whitespace-nowrap transition">Alle</button>
+                <button onclick="setMaintFilter('VVS & Vann')" data-mcat="VVS & Vann" class="maint-filter-btn px-3.5 py-2 rounded-xl text-xs font-semibold bg-white text-cabin-slate border border-cabin-wood/40 whitespace-nowrap transition">💧 VVS & Vann</button>
+                <button onclick="setMaintFilter('Elektro & Varme')" data-mcat="Elektro & Varme" class="maint-filter-btn px-3.5 py-2 rounded-xl text-xs font-semibold bg-white text-cabin-slate border border-cabin-wood/40 whitespace-nowrap transition">⚡ Elektro & Varme</button>
+                <button onclick="setMaintFilter('Maling & Overflater')" data-mcat="Maling & Overflater" class="maint-filter-btn px-3.5 py-2 rounded-xl text-xs font-semibold bg-white text-cabin-slate border border-cabin-wood/40 whitespace-nowrap transition">🖌️ Maling & Overflater</button>
+                <button onclick="setMaintFilter('Hvitevarer')" data-mcat="Hvitevarer" class="maint-filter-btn px-3.5 py-2 rounded-xl text-xs font-semibold bg-white text-cabin-slate border border-cabin-wood/40 whitespace-nowrap transition">🧺 Hvitevarer</button>
+                <button onclick="setMaintFilter('Annet')" data-mcat="Annet" class="maint-filter-btn px-3.5 py-2 rounded-xl text-xs font-semibold bg-white text-cabin-slate border border-cabin-wood/40 whitespace-nowrap transition">🛠️ Annet</button>
+            </div>
+
+            <!-- Tidslinje -->
+            <div id="maintenance-timeline" class="space-y-4"></div>
+        </section>
+
+        <!-- ==================== 8. INNSTILLINGER & BACKUP ==================== -->
+        <section id="tab-innstillinger" class="tab-content hidden fade-in space-y-6">
+            <div>
+                <h2 class="font-display text-2xl font-bold text-cabin-slate">Innstillinger & Sikkerhetskopi</h2>
+                <p class="text-sm text-cabin-muted">Tilpass navnet på leiligheten eller ta sikkerhetskopi for å dele innholdet med resten av familien.</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Endre navn på leiligheten -->
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-cabin-wood/40 space-y-4">
+                    <h3 class="font-display font-bold text-base text-cabin-slate flex items-center gap-2">
+                        <i data-lucide="home" class="w-4 h-4 text-cabin-forest"></i>
+                        <span>Navn på leiligheten</span>
+                    </h3>
+                    <form onsubmit="updateCabinName(event)" class="space-y-3">
+                        <input type="text" id="settings-cabin-name" required class="w-full rounded-xl border border-gray-200 px-3.5 py-2.5 text-sm focus:outline-none focus:border-cabin-forest">
+                        <button type="submit" class="px-4 py-2.5 rounded-xl bg-cabin-forest hover:bg-cabin-forestLight text-white text-sm font-semibold transition">
+                            Lagre nytt navn
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Eksport & Import JSON -->
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-cabin-wood/40 space-y-4">
+                    <h3 class="font-display font-bold text-base text-cabin-slate flex items-center gap-2">
+                        <i data-lucide="database-backup" class="w-4 h-4 text-cabin-terracotta"></i>
+                        <span>Sikkerhetskopi & Deling (JSON)</span>
+                    </h3>
+                    <p class="text-xs text-cabin-muted leading-relaxed">Last ned en fil med lokalt innhold (mat, klær, ski, utvask og vedlikehold) for å ta vare på det eller sende det til andre i familien. Inneholdslisten følger ikke med.</p>
+                    <div class="flex flex-wrap gap-3 pt-1">
+                        <button onclick="exportBackupJSON()" class="px-4 py-2.5 rounded-xl bg-cabin-forest hover:bg-cabin-forestLight text-white text-sm font-semibold transition flex items-center gap-2">
+                            <i data-lucide="download" class="w-4 h-4"></i>
+                            <span>Last ned backup (.json)</span>
+                        </button>
+                        <label class="px-4 py-2.5 rounded-xl bg-cabin-terracottaLight hover:bg-cabin-terracotta hover:text-white text-cabin-terracotta text-sm font-semibold transition flex items-center gap-2 cursor-pointer">
+                            <i data-lucide="upload" class="w-4 h-4"></i>
+                            <span>Gjenopprett fra fil</span>
+                            <input type="file" accept=".json" onchange="importBackupJSON(event)" class="hidden">
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Tilbakestill data -->
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-red-200/70 space-y-3 md:col-span-2">
+                    <h3 class="font-display font-bold text-base text-red-700 flex items-center gap-2">
+                        <i data-lucide="alert-triangle" class="w-4 h-4"></i>
+                        <span>Tilbakestill til standard eksempeldata</span>
+                    </h3>
+                    <p class="text-xs text-cabin-muted">Dette sletter lokalt lagrede endringer og legger tilbake de opprinnelige eksempeldataene. Inneholdslisten påvirkes ikke.</p>
+                    <div>
+                        <button id="btn-reset-all" onclick="confirmResetAll()" class="px-4 py-2 rounded-xl bg-red-50 hover:bg-red-600 text-red-700 hover:text-white border border-red-200 text-xs font-bold transition">
+                            Tilbakestill alt innhold
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- ==================== MODAL: EXCEL IMPORT FOR UTVASK ==================== -->
+    <div id="excel-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
+        <div class="bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden fade-in">
+            <div class="p-5 sm:p-6 border-b border-gray-100 flex items-center justify-between bg-cabin-bg">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-cabin-forest text-white flex items-center justify-center">
+                        <i data-lucide="file-spreadsheet" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-display font-bold text-lg text-cabin-slate">Importer sjekkliste fra Excel</h3>
+                        <p class="text-xs text-cabin-muted">Last opp .xlsx/.xls/.csv eller lim inn rader direkte fra Excel</p>
+                    </div>
+                </div>
+                <button onclick="closeExcelModal()" class="p-2 rounded-xl hover:bg-gray-200/60 text-cabin-muted" aria-label="Lukk Excel-import">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <div class="p-5 sm:p-6 overflow-y-auto space-y-5 flex-1">
+                <!-- Metode 1: Filopplasting -->
+                <div class="space-y-2">
+                    <label class="block text-xs font-bold uppercase tracking-wider text-cabin-forest">Alternativ 1: Last opp Excel-fil (.xlsx, .xls, .csv)</label>
+                    <label class="flex flex-col items-center justify-center border-2 border-dashed border-cabin-wood rounded-2xl p-5 bg-cabin-bg/40 hover:bg-cabin-pine/30 transition cursor-pointer text-center">
+                        <i data-lucide="upload-cloud" class="w-8 h-8 text-cabin-forest mb-2"></i>
+                        <span class="text-sm font-semibold text-cabin-slate">Klikk for å velge Excel-fil fra datamaskinen</span>
+                        <span class="text-xs text-cabin-muted mt-1">Tips: Kolonne A = Rom (valgfritt), Kolonne B = Oppgave (eller bare én kolonne med oppgaver)</span>
+                        <input type="file" id="excel-file-input" accept=".xlsx,.xls,.csv" onchange="handleExcelFileUpload(event)" class="hidden">
+                    </label>
+                </div>
+
+                <!-- Metode 2: Kopier & Lim inn -->
+                <div class="space-y-2">
+                    <label class="block text-xs font-bold uppercase tracking-wider text-cabin-forest">Alternativ 2: Kopier celler i Excel og lim inn her</label>
+                    <textarea id="excel-paste-area" rows="4" oninput="parsePastedExcelText()" placeholder="Marker cellene i Excel, trykk Ctrl+C (eller Cmd+C), og lim inn her med Ctrl+V...&#10;Eksempel:&#10;Bad	Vask dusjkabinett og speil&#10;Stue & Kjøkken	Støvsug sofa og gulv" class="w-full rounded-2xl border border-gray-200 p-3.5 text-sm focus:outline-none focus:border-cabin-forest"></textarea>
+                </div>
+
+                <!-- Importmodus -->
+                <div class="flex flex-wrap items-center gap-4 bg-cabin-bg p-3.5 rounded-xl">
+                    <span class="text-xs font-bold text-cabin-slate">Hvordan skal punktene importeres?</span>
+                    <label class="flex items-center gap-2 text-xs font-medium cursor-pointer">
+                        <input type="radio" name="excel-import-mode" value="append" checked class="accent-cabin-forest">
+                        <span>Legg til i eksisterende liste</span>
+                    </label>
+                    <label class="flex items-center gap-2 text-xs font-medium cursor-pointer">
+                        <input type="radio" name="excel-import-mode" value="replace" class="accent-cabin-terracotta">
+                        <span>Erstatt hele sjekklisten</span>
+                    </label>
+                </div>
+
+                <!-- Forhåndsvisning -->
+                <div id="excel-preview-wrapper" class="hidden space-y-2">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-bold text-cabin-forest" id="excel-preview-count">0 punkter klare for import</span>
+                    </div>
+                    <div id="excel-preview-list" class="max-h-40 overflow-y-auto border border-gray-200 rounded-xl divide-y divide-gray-100 text-xs bg-white"></div>
+                </div>
+            </div>
+
+            <div class="wrapping-controls p-4 sm:p-5 border-t border-gray-100 bg-cabin-bg flex justify-end gap-3">
+                <button onclick="closeExcelModal()" class="px-4 py-2.5 rounded-xl bg-white border border-gray-200 text-sm font-semibold text-cabin-slate hover:bg-gray-50">Avbryt</button>
+                <button id="btn-confirm-excel" onclick="confirmExcelImport()" disabled class="px-5 py-2.5 rounded-xl bg-cabin-forest disabled:opacity-40 text-white text-sm font-semibold transition flex items-center gap-2">
+                    <i data-lucide="check" class="w-4 h-4"></i>
+                    <span>Importer sjekkliste</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== MODAL: NYTT FAMILIEMEDLEM ==================== -->
+    <div id="member-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
+        <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4 fade-in">
+            <div class="flex items-center justify-between">
+                <h3 class="font-display font-bold text-lg text-cabin-slate">Legg til familiemedlem</h3>
+                <button onclick="closeNewMemberModal()" class="p-1.5 rounded-lg hover:bg-gray-100 text-cabin-muted" aria-label="Lukk skjema for familiemedlem">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <form onsubmit="addNewFamilyMember(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-cabin-muted mb-1">Navn *</label>
+                    <input type="text" id="new-member-name" required placeholder="F.eks. Bestemor, Gjest, Henrik..." class="w-full rounded-xl border border-gray-200 px-3.5 py-2.5 text-sm focus:outline-none focus:border-cabin-forest">
+                </div>
+                <div class="wrapping-controls flex justify-end gap-2">
+                    <button type="button" onclick="closeNewMemberModal()" class="px-4 py-2 rounded-xl border border-gray-200 text-sm font-semibold">Avbryt</button>
+                    <button type="submit" class="px-5 py-2 rounded-xl bg-cabin-forest text-white text-sm font-semibold">Opprett</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ==================== TOAST VARSLING ==================== -->
+    <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- ==================== JAVASCRIPT LOGIKK ==================== -->
+    <script>
+        const STORAGE_KEY = 'fjellheimen_cabin_app_v2';
+
+        // Standard norske eksempeldata
+        const defaultData = {
+            cabinName: 'Fjellheimen',
+            fridgeItems: [
+                { id: 'f1', name: 'Tine Helmelk 1L', location: 'Kjøleskap', qty: 2, note: 'Utløper om 5 dager' },
+                { id: 'f2', name: 'Norvegia Gulost', location: 'Kjøleskap', qty: 1, note: 'Åpnet pakke' },
+                { id: 'f3', name: 'Gilde Bacon i skiver', location: 'Kjøleskap', qty: 2, note: 'Til helgefrokost' },
+                { id: 'f4', name: 'Egg (12-pakning)', location: 'Kjøleskap', qty: 1, note: '8 egg igjen' },
+                { id: 'f5', name: 'Kjøttdeig av storfe 400g', location: 'Fryser', qty: 3, note: 'Frosset ned november' },
+                { id: 'f6', name: 'Grovbrød (oppskåret)', location: 'Fryser', qty: 2, note: 'I øverste skuff' },
+                { id: 'f7', name: 'Grandiosa Pizza', location: 'Fryser', qty: 2, note: 'Reserve til sen ankomst' }
+            ],
+            dryGoods: [
+                { id: 'd1', name: 'Evergood Filterkaffe', category: 'Drikke & Kos', amount: '1 pose (halvfull)', needToBuy: true },
+                { id: 'd2', name: 'Bjørn Havregryn', category: 'Frokost & Pålegg', amount: '1,5 pose', needToBuy: false },
+                { id: 'd3', name: 'Barilla Spaghetti', category: 'Middag & Hermetikk', amount: '2 pakker', needToBuy: false },
+                { id: 'd4', name: 'Hakkede tomater (boks)', category: 'Middag & Hermetikk', amount: '1 boks igjen', needToBuy: true },
+                { id: 'd5', name: 'Kakaopulver & Rett i koppen', category: 'Drikke & Kos', amount: 'God beholdning', needToBuy: false },
+                { id: 'd6', name: 'Hvetemel & Bakepulver', category: 'Baking & Krydder', amount: '1 kg pose', needToBuy: false },
+                { id: 'd7', name: 'Knekkebrød & Leverpostei', category: 'Frokost & Pålegg', amount: 'Nesten tomt', needToBuy: true }
+            ],
+            familyMembers: [
+                {
+                    id: 'm1',
+                    name: 'Mor',
+                    clothes: [
+                        { id: 'c1', item: 'Bergans Dunjakke', category: 'Yttertøy', size: 'Str. M', note: 'Henger i gangen' },
+                        { id: 'c2', item: 'Devold Ullundertøy (sett)', category: 'Ull', size: 'Str. M', note: '2 sett i kommode' },
+                        { id: 'c3', item: 'Ullsokker & strikkelue', category: 'Tilbehør', size: 'Str. 39', note: 'Kurv i gangen' }
+                    ]
+                },
+                {
+                    id: 'm2',
+                    name: 'Far',
+                    clothes: [
+                        { id: 'c4', item: 'Norrøna Skalljakke & bukse', category: 'Yttertøy', size: 'Str. L', note: 'Impregnert i høst' },
+                        { id: 'c5', item: 'Aclima Ulltrøye & stillongs', category: 'Ull', size: 'Str. L', note: '2 sett' },
+                        { id: 'c6', item: 'Hestra Vinterhansker', category: 'Tilbehør', size: 'Str. 10', note: 'På skotørker-hylla' }
+                    ]
+                },
+                {
+                    id: 'm3',
+                    name: 'Sofie',
+                    clothes: [
+                        { id: 'c7', item: 'Vinterdress / Skijakke', category: 'Yttertøy', size: 'Str. 140', note: 'Lilla/blå' },
+                        { id: 'c8', item: 'Ullfleece mellomlag', category: 'Ull', size: 'Str. 140', note: 'I skuff merket Sofie' }
+                    ]
+                },
+                {
+                    id: 'm4',
+                    name: 'Lukas',
+                    clothes: [
+                        { id: 'c9', item: 'Skibukse & vinterjakke', category: 'Yttertøy', size: 'Str. 122', note: 'Mørkegrønn' },
+                        { id: 'c10', item: 'Ullsokker & hals', category: 'Tilbehør', size: 'Str. 31-33', note: '3 par' }
+                    ]
+                }
+            ],
+            storageItems: [
+                { id: 'b1', name: 'Fischer Twin Skin Pro (Felleski)', category: 'Langrennsski', owner: 'Far', size: '202 cm', note: 'Nyrenset fell, står i innerste skistativ' },
+                { id: 'b2', name: 'Madshus Terrasonic Intelligrip', category: 'Langrennsski', owner: 'Mor', size: '187 cm', note: 'Felleski, klar til bruk' },
+                { id: 'b3', name: 'Völkl Mantra M6 Alpinski', category: 'Alpin / Topptur', owner: 'Far', size: '177 cm', note: 'Nyslipte kanter og glidet' },
+                { id: 'b4', name: 'Alpina ECL Pro Langrennsstøvler', category: 'Skistøvler', owner: 'Far', size: 'Str. 43', note: 'Står på skohylle til høyre' },
+                { id: 'b5', name: 'Salomon S/Pro 90 Alpinstøvler', category: 'Skistøvler', owner: 'Mor', size: 'Str. 39', note: 'I støvelbag på øverste hylle' },
+                { id: 'b6', name: 'Åsnes Fjellski med stålkanter', category: 'Langrennsski', owner: 'Mor', size: '185 cm', note: 'Kortfeller ligger i skuffen' },
+                { id: 'b7', name: 'Barneskipakke (Langrenn)', category: 'Langrennsski', owner: 'Sofie', size: '140 cm', note: 'Smøreski (blå extra på)' },
+                { id: 'b8', name: 'Swix Quantum 3 Langrennsstaver', category: 'Staver & Annet', owner: 'Far', size: '155 cm', note: 'Henger på krok på veggen' },
+                { id: 'b9', name: 'Smørekoffert & skibukk', category: 'Staver & Annet', owner: 'Felles', size: 'Komplett', note: 'Under arbeidsbenk i boden' }
+            ],
+            cleaningChecklist: [
+                { id: 'u1', room: 'Stue & Kjøkken', task: 'Tøm kjøleskap for ferskvarer som ikke tåler å stå', done: false },
+                { id: 'u2', room: 'Stue & Kjøkken', task: 'Tøm oppvaskmaskin og sett alt på plass i skap', done: false },
+                { id: 'u3', room: 'Stue & Kjøkken', task: 'Tørk over kjøkkenbenk, komfyr og spisebord', done: false },
+                { id: 'u4', room: 'Stue & Kjøkken', task: 'Støvsug og vask gulv i stue og kjøkkendel', done: false },
+                { id: 'u5', room: 'Bad', task: 'Vask servant, speil og toalett', done: false },
+                { id: 'u6', room: 'Bad', task: 'Rengjør dusjkabinett og tøm sluk for hår', done: false },
+                { id: 'u7', room: 'Soverom', task: 'Ta av sengetøy og rist dyner/puter', done: false },
+                { id: 'u8', room: 'Soverom', task: 'Støvsug under senger og langs lister', done: false },
+                { id: 'u9', room: 'Gang & Bod', task: 'Bær ut all søppel og pant til fellescontainer', done: false },
+                { id: 'u10', room: 'Gang & Bod', task: 'Senk varmekabler/panelovner til sparetemperatur (12°C) og steng hovedstoppekran', done: false }
+            ],
+            maintenanceLog: [
+                {
+                    id: 'v1',
+                    date: '2026-10-18',
+                    category: 'VVS & Vann',
+                    title: 'Sjekket hovedstoppekran og renset vannlås på bad',
+                    doneBy: 'Far',
+                    details: 'Smurt kranen og sjekket at varmtvannsbereder står på 70 grader. Ingen lekkasjer.'
+                },
+                {
+                    id: 'v2',
+                    date: '2026-09-05',
+                    category: 'Elektro & Varme',
+                    title: 'Byttet batterier i alle røykvarslere og testet komfyrvakt',
+                    doneBy: 'Mor',
+                    details: '3 stk 9V litiumbatterier byttet. Alt fungerer som det skal.'
+                },
+                {
+                    id: 'v3',
+                    date: '2026-07-22',
+                    category: 'Maling & Overflater',
+                    title: 'Beiset rekkverk og terrassebord på balkongen',
+                    doneBy: 'Mor & Far',
+                    details: 'Brukte Jotun Trebitt Terrassebeis (farge Shimmergrå). 1 strøk.'
+                }
+            ]
+        };
+
+        // Tilstandsvariabler
+        let appData = loadData();
+        let currentTab = 'oversikt';
+        let activeMemberId = appData.familyMembers[0]?.id || null;
+        let dryGoodFilter = 'ALL';
+        let storageCatFilter = 'ALLE';
+        let maintCatFilter = 'ALLE';
+        let pendingExcelItems = [];
+        let resetConfirmPending = false;
+
+        // ==================== HJELPEFUNKSJONER ====================
+        function escapeHtml(str) {
+            if (str === null || str === undefined) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        function loadData() {
+            try {
+                const raw = localStorage.getItem(STORAGE_KEY);
+                if (raw) {
+                    const parsed = JSON.parse(raw);
+                    return {
+                        cabinName: parsed.cabinName || defaultData.cabinName,
+                        fridgeItems: Array.isArray(parsed.fridgeItems) ? parsed.fridgeItems : defaultData.fridgeItems,
+                        dryGoods: Array.isArray(parsed.dryGoods) ? parsed.dryGoods : defaultData.dryGoods,
+                        familyMembers: Array.isArray(parsed.familyMembers) && parsed.familyMembers.length > 0 ? parsed.familyMembers : defaultData.familyMembers,
+                        storageItems: Array.isArray(parsed.storageItems) ? parsed.storageItems : defaultData.storageItems,
+                        cleaningChecklist: Array.isArray(parsed.cleaningChecklist) ? parsed.cleaningChecklist : defaultData.cleaningChecklist,
+                        maintenanceLog: Array.isArray(parsed.maintenanceLog) ? parsed.maintenanceLog : defaultData.maintenanceLog
+                    };
+                }
+            } catch (err) {
+                console.error('Feil ved lasting fra localStorage:', err);
+            }
+            return JSON.parse(JSON.stringify(defaultData));
+        }
+
+        function saveData() {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(appData));
+            } catch (err) {
+                console.error('Feil ved lagring til localStorage:', err);
+            }
+            updateAllViews();
+        }
+
+        function showToast(message) {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = 'bg-cabin-forest text-white px-4 py-3 rounded-xl shadow-lg text-sm font-medium flex items-center gap-2 fade-in border border-white/10';
+            toast.innerHTML = `<i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-300 shrink-0"></i><span>${escapeHtml(message)}</span>`;
+            container.appendChild(toast);
+            lucide.createIcons();
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transition = 'opacity 0.25s ease';
+                setTimeout(() => toast.remove(), 250);
+            }, 2600);
+        }
+
+        function formatNorwegianDate(dateStr) {
+            if (!dateStr) return '';
+            try {
+                const parts = dateStr.split('-');
+                if (parts.length === 3) {
+                    const d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+                    return d.toLocaleDateString('nb-NO', { day: 'numeric', month: 'short', year: 'numeric' });
+                }
+            } catch (e) {}
+            return dateStr;
+        }
+
+        // ==================== NAVIGASJON ====================
+        const desktopNavigation = window.matchMedia('(min-width: 1024px)');
+        const sidebar = document.getElementById('sidebar');
+        const mobileMenuToggle = document.getElementById('mobile-menu-toggle');
+
+        function setMobileMenu(open, restoreFocus = true) {
+            const isMobile = !desktopNavigation.matches;
+            const wasOpen = sidebar.hasAttribute('data-open');
+            const isOpen = isMobile && open;
+            sidebar.toggleAttribute('data-open', isOpen);
+            sidebar.inert = isMobile && !isOpen;
+            document.getElementById('mobile-menu-overlay').classList.toggle('hidden', !isOpen);
+            document.body.classList.toggle('mobile-menu-open', isOpen);
+            mobileMenuToggle.setAttribute('aria-expanded', String(isOpen));
+            document.getElementById('mobile-header').inert = isOpen;
+            document.querySelector('main').inert = isOpen;
+
+            if (isOpen) {
+                document.getElementById('mobile-menu-close').focus();
+            } else if (wasOpen && isMobile && restoreFocus) {
+                mobileMenuToggle.focus();
+            }
+        }
+
+        desktopNavigation.addEventListener('change', () => setMobileMenu(false, false));
+        document.addEventListener('keydown', event => {
+            if (event.key === 'Escape' && sidebar.hasAttribute('data-open')) {
+                setMobileMenu(false);
+            }
+        });
+
+        function switchTab(tabId) {
+            currentTab = tabId;
+            document.querySelectorAll('.tab-content').forEach(sec => sec.classList.add('hidden'));
+            const activeSec = document.getElementById(`tab-${tabId}`);
+            if (activeSec) activeSec.classList.remove('hidden');
+
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                if (btn.dataset.tab === tabId) {
+                    btn.classList.add('bg-cabin-terracotta', 'text-white', 'shadow-sm');
+                    btn.classList.remove('text-cabin-pine/90', 'hover:bg-white/10');
+                    btn.setAttribute('aria-current', 'page');
+                } else {
+                    btn.classList.remove('bg-cabin-terracotta', 'text-white', 'shadow-sm');
+                    btn.classList.add('text-cabin-pine/90', 'hover:bg-white/10');
+                    btn.removeAttribute('aria-current');
+                }
+            });
+
+            if (sidebar.hasAttribute('data-open')) {
+                setMobileMenu(false);
+            }
+            if (tabId === 'inneholdsliste') {
+                if (location.hash !== '#inneholdsliste') history.replaceState(null, '', '#inneholdsliste');
+                activeSec.dispatchEvent(new Event('inventory:open'));
+            } else if (location.hash === '#inneholdsliste') {
+                history.replaceState(null, '', location.pathname + location.search);
+            }
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // ==================== 1. OVERSIKT (DASHBOARD) ====================
+        function renderDashboard() {
+            const name = appData.cabinName || 'Fjellheimen';
+            document.title = `${name} – Oversikt over fjelleiligheten`;
+            document.querySelectorAll('.sidebar-cabin-title, .mobile-cabin-title').forEach(el => el.textContent = name);
+            document.getElementById('dashboard-cabin-title').textContent = `Velkommen til ${name}`;
+            const settingsInput = document.getElementById('settings-cabin-name');
+            if (settingsInput && document.activeElement !== settingsInput) {
+                settingsInput.value = name;
+            }
+
+            // Dagens dato
+            const todayFormatted = new Date().toLocaleDateString('nb-NO', {
+                weekday: 'long',
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric'
+            });
+            document.getElementById('current-date-display').textContent = todayFormatted.charAt(0).toUpperCase() + todayFormatted.slice(1);
+
+            // Kort 1: Kjøl & Frys
+            const fridgeCount = appData.fridgeItems.filter(i => i.location === 'Kjøleskap').length;
+            const freezerCount = appData.fridgeItems.filter(i => i.location === 'Fryser').length;
+            document.getElementById('stat-kjol-total').textContent = `${appData.fridgeItems.length} varer`;
+            document.getElementById('stat-kjol-sub').textContent = `${fridgeCount} kjøl · ${freezerCount} frys`;
+
+            // Kort 2: Tørrvarer
+            const buyItems = appData.dryGoods.filter(i => i.needToBuy);
+            document.getElementById('stat-torr-total').textContent = `${appData.dryGoods.length} varer`;
+            const torrSub = document.getElementById('stat-torr-sub');
+            if (buyItems.length > 0) {
+                torrSub.textContent = `${buyItems.length} må kjøpes inn`;
+                torrSub.className = 'text-xs font-bold text-cabin-terracotta mt-1 truncate';
+            } else {
+                torrSub.textContent = 'Alt på stell i skapene';
+                torrSub.className = 'text-xs font-medium text-emerald-700 mt-1 truncate';
+            }
+
+            // Badge i sidemeny
+            const navBadge = document.getElementById('nav-badge-handleliste');
+            if (buyItems.length > 0) {
+                navBadge.textContent = buyItems.length;
+                navBadge.classList.remove('hidden');
+            } else {
+                navBadge.classList.add('hidden');
+            }
+
+            // Kort 3: Tøy per familiemedlem
+            const totalClothes = appData.familyMembers.reduce((sum, m) => sum + m.clothes.length, 0);
+            document.getElementById('stat-toy-total').textContent = `${totalClothes} plagg`;
+            document.getElementById('stat-toy-sub').textContent = `Fordelt på ${appData.familyMembers.length} pers.`;
+
+            // Kort 4: Bod & Ski
+            const skiCount = appData.storageItems.filter(i => i.category === 'Langrennsski' || i.category === 'Alpin / Topptur').length;
+            const bootCount = appData.storageItems.filter(i => i.category === 'Skistøvler' || i.category === 'Langrennsko').length;
+            document.getElementById('stat-bod-total').textContent = `${appData.storageItems.length} enheter`;
+            document.getElementById('stat-bod-sub').textContent = `${skiCount} par ski · ${bootCount} par støvler`;
+
+            // Kort 5: Utvask & Vedlikehold
+            const totalTasks = appData.cleaningChecklist.length;
+            const doneTasks = appData.cleaningChecklist.filter(t => t.done).length;
+            const pct = totalTasks === 0 ? 0 : Math.round((doneTasks / totalTasks) * 100);
+            document.getElementById('stat-utvask-percent').textContent = `${pct}%`;
+            document.getElementById('stat-utvask-bar').style.width = `${pct}%`;
+
+            const sortedMaint = [...appData.maintenanceLog].sort((a, b) => b.date.localeCompare(a.date));
+            document.getElementById('stat-vedlikehold-sub').textContent = sortedMaint.length > 0
+                ? `Siste: ${formatNorwegianDate(sortedMaint[0].date)}`
+                : 'Ingen vedlikehold logget';
+
+            // Handleliste på forsiden
+            const shopEl = document.getElementById('dashboard-shopping-list');
+            if (buyItems.length === 0) {
+                shopEl.innerHTML = `<div class="p-4 rounded-xl bg-cabin-bg text-xs text-cabin-muted text-center">Ingen tørrvarer på handlelisten akkurat nå.</div>`;
+            } else {
+                shopEl.innerHTML = buyItems.slice(0, 5).map(item => `
+                    <div class="flex items-center justify-between p-2.5 rounded-xl bg-cabin-terracottaLight/60 border border-cabin-terracotta/20">
+                        <div class="min-w-0">
+                            <p class="text-sm font-semibold text-cabin-slate truncate">${escapeHtml(item.name)}</p>
+                            <p class="text-[11px] text-cabin-muted truncate">${escapeHtml(item.category)}</p>
+                        </div>
+                        <button onclick="toggleDryGoodBuy('${item.id}')" class="px-2.5 py-1 rounded-lg bg-white text-xs font-semibold text-cabin-forest border border-gray-200 hover:bg-cabin-forest hover:text-white transition shrink-0">
+                            Kjøpt
+                        </button>
+                    </div>
+                `).join('');
+            }
+
+            // Tøy per familiemedlem på forsiden
+            const famEl = document.getElementById('dashboard-family-clothes');
+            famEl.innerHTML = appData.familyMembers.map(member => `
+                <div onclick="openMemberFromDashboard('${member.id}')" class="flex items-center justify-between p-2.5 rounded-xl bg-cabin-bg hover:bg-cabin-pine/50 transition cursor-pointer">
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-8 h-8 rounded-full bg-cabin-forest text-white text-xs font-bold flex items-center justify-center">
+                            ${escapeHtml(member.name.charAt(0).toUpperCase())}
+                        </div>
+                        <span class="text-sm font-semibold text-cabin-slate">${escapeHtml(member.name)}</span>
+                    </div>
+                    <span class="text-xs font-bold px-2.5 py-1 rounded-full bg-white text-cabin-forest border border-cabin-wood/40">
+                        ${member.clothes.length} plagg
+                    </span>
+                </div>
+            `).join('');
+
+            // Siste vedlikehold på forsiden
+            const maintEl = document.getElementById('dashboard-maintenance-list');
+            if (sortedMaint.length === 0) {
+                maintEl.innerHTML = `<div class="p-4 rounded-xl bg-cabin-bg text-xs text-cabin-muted text-center">Ingen oppføringer i vedlikeholdsloggen ennå.</div>`;
+            } else {
+                maintEl.innerHTML = sortedMaint.slice(0, 3).map(m => `
+                    <div class="p-3 rounded-xl bg-cabin-bg border border-cabin-wood/30 space-y-1">
+                        <div class="flex items-center justify-between text-[11px] text-cabin-muted">
+                            <span class="font-semibold text-cabin-forest">${escapeHtml(m.category)}</span>
+                            <span>${formatNorwegianDate(m.date)}</span>
+                        </div>
+                        <p class="text-sm font-semibold text-cabin-slate leading-snug">${escapeHtml(m.title)}</p>
+                    </div>
+                `).join('');
+            }
+        }
+
+        function openMemberFromDashboard(memberId) {
+            activeMemberId = memberId;
+            switchTab('toy');
+            renderClothes();
+        }
+
+        // ==================== 2. KJØLESKAP & FRYSER ====================
+        function addFridgeItem(e) {
+            e.preventDefault();
+            const name = document.getElementById('kjol-name').value.trim();
+            const location = document.getElementById('kjol-location').value;
+            const qty = Math.max(1, parseInt(document.getElementById('kjol-qty').value, 10) || 1);
+            const note = document.getElementById('kjol-note').value.trim();
+            if (!name) return;
+
+            appData.fridgeItems.unshift({
+                id: 'f_' + Date.now(),
+                name,
+                location,
+                qty,
+                note
+            });
+
+            document.getElementById('kjol-name').value = '';
+            document.getElementById('kjol-qty').value = '1';
+            document.getElementById('kjol-note').value = '';
+            saveData();
+            showToast(`La til «${name}» i ${location.toLowerCase()}`);
+        }
+
+        function adjustFridgeQty(id, delta) {
+            const item = appData.fridgeItems.find(i => i.id === id);
+            if (!item) return;
+            item.qty += delta;
+            if (item.qty <= 0) {
+                appData.fridgeItems = appData.fridgeItems.filter(i => i.id !== id);
+                showToast(`Fjernet «${item.name}»`);
+            }
+            saveData();
+        }
+
+        function deleteFridgeItem(id) {
+            appData.fridgeItems = appData.fridgeItems.filter(i => i.id !== id);
+            saveData();
+            showToast('Vare slettet');
+        }
+
+        function renderFridge() {
+            const fridge = appData.fridgeItems.filter(i => i.location === 'Kjøleskap');
+            const freezer = appData.fridgeItems.filter(i => i.location === 'Fryser');
+
+            document.getElementById('count-kjoleskap').textContent = `${fridge.length} varer`;
+            document.getElementById('count-fryser').textContent = `${freezer.length} varer`;
+
+            const renderList = (items, emptyText) => {
+                if (items.length === 0) {
+                    return `<p class="text-sm text-cabin-muted text-center py-6 bg-cabin-bg/60 rounded-xl">${emptyText}</p>`;
+                }
+                return items.map(item => `
+                    <div class="inventory-row flex items-center justify-between gap-3 p-3 rounded-xl bg-cabin-bg/70 border border-cabin-wood/30">
+                        <div class="min-w-0">
+                            <p class="font-semibold text-sm text-cabin-slate truncate">${escapeHtml(item.name)}</p>
+                            ${item.note ? `<p class="text-xs text-cabin-muted truncate mt-0.5">${escapeHtml(item.note)}</p>` : ''}
+                        </div>
+                        <div class="wrapping-controls flex items-center gap-1.5 shrink-0">
+                            <button onclick="adjustFridgeQty('${item.id}', -1)" class="w-7 h-7 rounded-lg bg-white border border-gray-200 hover:bg-gray-100 flex items-center justify-center font-bold text-sm" title="Reduser antall">−</button>
+                            <span class="w-7 text-center text-sm font-bold text-cabin-slate">${item.qty}</span>
+                            <button onclick="adjustFridgeQty('${item.id}', 1)" class="w-7 h-7 rounded-lg bg-white border border-gray-200 hover:bg-gray-100 flex items-center justify-center font-bold text-sm" title="Øk antall">+</button>
+                            <button onclick="deleteFridgeItem('${item.id}')" class="p-1.5 ml-1 text-gray-400 hover:text-red-600 rounded-lg transition" title="Slett vare">
+                                <i data-lucide="trash-2" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+            };
+
+            document.getElementById('list-kjoleskap').innerHTML = renderList(fridge, 'Kjøleskapet er tomt.');
+            document.getElementById('list-fryser').innerHTML = renderList(freezer, 'Fryseren er tom.');
+        }
+
+        // ==================== 3. TØRRVARER ====================
+        function addDryGood(e) {
+            e.preventDefault();
+            const name = document.getElementById('torr-name').value.trim();
+            const category = document.getElementById('torr-category').value;
+            const amount = document.getElementById('torr-amount').value.trim();
+            const needToBuy = document.getElementById('torr-buy').checked;
+            if (!name) return;
+
+            appData.dryGoods.unshift({
+                id: 'd_' + Date.now(),
+                name,
+                category,
+                amount,
+                needToBuy
+            });
+
+            document.getElementById('torr-name').value = '';
+            document.getElementById('torr-amount').value = '';
+            document.getElementById('torr-buy').checked = false;
+            saveData();
+            showToast(`La til «${name}» i tørrvarer`);
+        }
+
+        function toggleDryGoodBuy(id) {
+            const item = appData.dryGoods.find(i => i.id === id);
+            if (!item) return;
+            item.needToBuy = !item.needToBuy;
+            saveData();
+            showToast(item.needToBuy ? `«${item.name}» lagt på handlelisten` : `«${item.name}» fjernet fra handlelisten`);
+        }
+
+        function deleteDryGood(id) {
+            appData.dryGoods = appData.dryGoods.filter(i => i.id !== id);
+            saveData();
+            showToast('Tørrvare slettet');
+        }
+
+        function setDryFilter(mode) {
+            dryGoodFilter = mode;
+            const btnAll = document.getElementById('filter-torr-all');
+            const btnBuy = document.getElementById('filter-torr-buy');
+            if (mode === 'ALL') {
+                btnAll.className = 'px-4 py-2.5 rounded-xl text-sm font-semibold bg-cabin-forest text-white transition';
+                btnBuy.className = 'px-4 py-2.5 rounded-xl text-sm font-semibold bg-white text-cabin-slate border border-cabin-wood/40 transition flex items-center gap-1.5';
+            } else {
+                btnBuy.className = 'px-4 py-2.5 rounded-xl text-sm font-semibold bg-cabin-terracotta text-white transition flex items-center gap-1.5';
+                btnAll.className = 'px-4 py-2.5 rounded-xl text-sm font-semibold bg-white text-cabin-slate border border-cabin-wood/40 transition';
+            }
+            renderDryGoods();
+        }
+
+        function renderDryGoods() {
+            const q = (document.getElementById('torr-search')?.value || '').toLowerCase();
+            const filtered = appData.dryGoods.filter(item => {
+                const matchFilter = dryGoodFilter === 'ALL' || item.needToBuy;
+                const matchSearch = !q || item.name.toLowerCase().includes(q) || item.category.toLowerCase().includes(q) || (item.amount && item.amount.toLowerCase().includes(q));
+                return matchFilter && matchSearch;
+            });
+
+            const container = document.getElementById('list-torrvarer');
+            if (filtered.length === 0) {
+                container.innerHTML = `<div class="col-span-full bg-white p-8 rounded-2xl text-center text-sm text-cabin-muted border border-cabin-wood/40">Ingen tørrvarer funnet.</div>`;
+                return;
+            }
+
+            container.innerHTML = filtered.map(item => `
+                <div class="inventory-row bg-white p-4 rounded-2xl shadow-sm border ${item.needToBuy ? 'border-cabin-terracotta/60 bg-cabin-terracottaLight/20' : 'border-cabin-wood/40'} flex items-center justify-between gap-3">
+                    <div class="min-w-0">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span class="text-[11px] font-semibold px-2 py-0.5 rounded-md bg-cabin-bg text-cabin-muted">${escapeHtml(item.category)}</span>
+                            ${item.needToBuy ? `<span class="text-[11px] font-bold px-2 py-0.5 rounded-md bg-cabin-terracotta text-white">Må kjøpes inn</span>` : ''}
+                        </div>
+                        <h4 class="font-bold text-sm text-cabin-slate mt-1.5 truncate">${escapeHtml(item.name)}</h4>
+                        ${item.amount ? `<p class="text-xs text-cabin-muted mt-0.5">${escapeHtml(item.amount)}</p>` : ''}
+                    </div>
+                    <div class="wrapping-controls flex items-center gap-2 shrink-0">
+                        <button onclick="toggleDryGoodBuy('${item.id}')" class="px-3 py-1.5 rounded-xl text-xs font-semibold border transition ${item.needToBuy ? 'bg-cabin-forest text-white border-cabin-forest' : 'bg-cabin-bg text-cabin-slate border-gray-200 hover:border-cabin-terracotta'}">
+                            ${item.needToBuy ? '✓ På liste' : '+ Kjøp inn'}
+                        </button>
+                        <button onclick="deleteDryGood('${item.id}')" class="p-1.5 text-gray-400 hover:text-red-600 rounded-lg transition" title="Slett">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+            lucide.createIcons();
+        }
+
+        // ==================== 4. TØY & KLÆR PER FAMILIEMEDLEM ====================
+        function openNewMemberModal() {
+            document.getElementById('member-modal').classList.remove('hidden');
+            document.getElementById('member-modal').classList.add('flex');
+            document.getElementById('new-member-name').focus();
+        }
+
+        function closeNewMemberModal() {
+            document.getElementById('member-modal').classList.add('hidden');
+            document.getElementById('member-modal').classList.remove('flex');
+            document.getElementById('new-member-name').value = '';
+        }
+
+        function addNewFamilyMember(e) {
+            e.preventDefault();
+            const name = document.getElementById('new-member-name').value.trim();
+            if (!name) return;
+            const newMember = {
+                id: 'm_' + Date.now(),
+                name,
+                clothes: []
+            };
+            appData.familyMembers.push(newMember);
+            activeMemberId = newMember.id;
+            closeNewMemberModal();
+            saveData();
+            showToast(`La til familiemedlem: ${name}`);
+        }
+
+        function selectFamilyMember(id) {
+            activeMemberId = id;
+            renderClothes();
+        }
+
+        function addClothingItem(e) {
+            e.preventDefault();
+            const member = appData.familyMembers.find(m => m.id === activeMemberId);
+            if (!member) return;
+
+            const item = document.getElementById('toy-item').value.trim();
+            const category = document.getElementById('toy-cat').value;
+            const size = document.getElementById('toy-size').value.trim();
+            const note = document.getElementById('toy-note').value.trim();
+            if (!item) return;
+
+            member.clothes.unshift({
+                id: 'c_' + Date.now(),
+                item,
+                category,
+                size,
+                note
+            });
+
+            saveData();
+            showToast(`La til «${item}» under ${member.name}`);
+        }
+
+        function deleteClothingItem(memberId, clothId) {
+            const member = appData.familyMembers.find(m => m.id === memberId);
+            if (!member) return;
+            member.clothes = member.clothes.filter(c => c.id !== clothId);
+            saveData();
+            showToast('Plagg slettet');
+        }
+
+        function deleteFamilyMember(memberId) {
+            if (appData.familyMembers.length <= 1) {
+                showToast('Du må ha minst ett familiemedlem');
+                return;
+            }
+            appData.familyMembers = appData.familyMembers.filter(m => m.id !== memberId);
+            activeMemberId = appData.familyMembers[0].id;
+            saveData();
+            showToast('Familiemedlem fjernet');
+        }
+
+        function renderClothes() {
+            if (!appData.familyMembers.some(m => m.id === activeMemberId)) {
+                activeMemberId = appData.familyMembers[0]?.id || null;
+            }
+
+            // Faner
+            const tabsEl = document.getElementById('family-tabs');
+            tabsEl.innerHTML = appData.familyMembers.map(m => {
+                const isActive = m.id === activeMemberId;
+                return `
+                    <button onclick="selectFamilyMember('${m.id}')" class="px-4 py-2.5 rounded-xl text-sm font-semibold whitespace-nowrap transition flex items-center gap-2 ${isActive ? 'bg-cabin-forest text-white shadow-xs' : 'bg-white text-cabin-slate border border-cabin-wood/40 hover:border-cabin-forest/40'}">
+                        <span>${escapeHtml(m.name)}</span>
+                        <span class="text-xs px-2 py-0.5 rounded-full ${isActive ? 'bg-white/20 text-white' : 'bg-cabin-bg text-cabin-muted'}">${m.clothes.length}</span>
+                    </button>
+                `;
+            }).join('');
+
+            const member = appData.familyMembers.find(m => m.id === activeMemberId);
+            const container = document.getElementById('active-member-container');
+            if (!member) {
+                container.innerHTML = '';
+                return;
+            }
+
+            container.innerHTML = `
+                <div class="flex items-center justify-between border-b border-gray-100 pb-4">
+                    <div class="flex items-center gap-3">
+                        <div class="w-11 h-11 rounded-2xl bg-cabin-pine text-cabin-forest font-display font-bold text-lg flex items-center justify-center">
+                            ${escapeHtml(member.name.charAt(0).toUpperCase())}
+                        </div>
+                        <div>
+                            <h3 class="font-display font-bold text-lg text-cabin-slate">${escapeHtml(member.name)}s tøy og klær</h3>
+                            <p class="text-xs text-cabin-muted">${member.clothes.length} registrerte plagg i leiligheten</p>
+                        </div>
+                    </div>
+                    ${appData.familyMembers.length > 1 ? `
+                        <button onclick="deleteFamilyMember('${member.id}')" class="text-xs font-semibold text-gray-400 hover:text-red-600 flex items-center gap-1 transition" aria-label="Fjern person">
+                            <i data-lucide="user-minus" class="w-4 h-4"></i>
+                            <span class="hidden sm:inline">Fjern person</span>
+                        </button>
+                    ` : ''}
+                </div>
+
+                <!-- Skjema for nytt plagg -->
+                <form onsubmit="addClothingItem(event)" class="grid grid-cols-1 sm:grid-cols-12 gap-3 bg-cabin-bg/70 p-4 rounded-2xl border border-cabin-wood/30">
+                    <div class="sm:col-span-4">
+                        <label class="block text-xs font-semibold text-cabin-muted mb-1">Plagg *</label>
+                        <input type="text" id="toy-item" required placeholder="F.eks. Ullgenser, Skibukse..." class="w-full bg-white rounded-xl border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:border-cabin-forest">
+                    </div>
+                    <div class="sm:col-span-3">
+                        <label class="block text-xs font-semibold text-cabin-muted mb-1">Kategori</label>
+                        <select id="toy-cat" class="w-full bg-white rounded-xl border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:border-cabin-forest">
+                            <option value="Yttertøy">🧥 Yttertøy</option>
+                            <option value="Ull">🧶 Ull & Mellomlag</option>
+                            <option value="Tilbehør">🧤 Tilbehør (Lue/Votter/Sko)</option>
+                            <option value="Innetøy">👕 Innetøy</option>
+                        </select>
+                    </div>
+                    <div class="sm:col-span-2">
+                        <label class="block text-xs font-semibold text-cabin-muted mb-1">Størrelse</label>
+                        <input type="text" id="toy-size" placeholder="Str. M / 140" class="w-full bg-white rounded-xl border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:border-cabin-forest">
+                    </div>
+                    <div class="sm:col-span-3">
+                        <label class="block text-xs font-semibold text-cabin-muted mb-1">Notat / Plassering</label>
+                        <input type="text" id="toy-note" placeholder="Skuff 2, gangen..." class="w-full bg-white rounded-xl border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:border-cabin-forest">
+                    </div>
+                    <div class="sm:col-span-12 flex justify-end">
+                        <button type="submit" class="w-full sm:w-auto px-4 py-2 rounded-xl bg-cabin-forest hover:bg-cabin-forestLight text-white text-sm font-semibold transition flex items-center justify-center gap-1.5">
+                            <i data-lucide="plus" class="w-4 h-4"></i>
+                            <span>Legg til plagg</span>
+                        </button>
+                    </div>
+                </form>
+
+                <!-- Liste over klær -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    ${member.clothes.length === 0
+                        ? `<p class="col-span-full text-sm text-cabin-muted text-center py-6">Ingen klær registrert for ${escapeHtml(member.name)} ennå.</p>`
+                        : member.clothes.map(c => `
+                            <div class="flex items-center justify-between gap-3 p-3.5 rounded-xl bg-white border border-cabin-wood/40">
+                                <div class="min-w-0">
+                                    <div class="flex items-center gap-2 flex-wrap">
+                                        <span class="text-[11px] font-semibold px-2 py-0.5 rounded-md bg-cabin-pine text-cabin-forest">${escapeHtml(c.category)}</span>
+                                        ${c.size ? `<span class="text-[11px] font-bold px-2 py-0.5 rounded-md bg-cabin-bg text-cabin-slate">${escapeHtml(c.size)}</span>` : ''}
+                                    </div>
+                                    <p class="font-bold text-sm text-cabin-slate mt-1 truncate">${escapeHtml(c.item)}</p>
+                                    ${c.note ? `<p class="text-xs text-cabin-muted truncate mt-0.5">${escapeHtml(c.note)}</p>` : ''}
+                                </div>
+                                <button onclick="deleteClothingItem('${member.id}', '${c.id}')" class="p-1.5 text-gray-400 hover:text-red-600 rounded-lg transition shrink-0" title="Slett plagg">
+                                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                        `).join('')
+                    }
+                </div>
+            `;
+            lucide.createIcons();
+        }
+
+        // ==================== 5. BOD & SKI ====================
+        function syncStorageOwnerDropdowns() {
+            const ownerSelect = document.getElementById('bod-owner');
+            const filterSelect = document.getElementById('bod-filter-owner');
+            if (!ownerSelect || !filterSelect) return;
+
+            const prevOwner = ownerSelect.value;
+            const prevFilter = filterSelect.value || 'ALLE';
+
+            const names = [...appData.familyMembers.map(m => m.name), 'Felles'];
+            ownerSelect.innerHTML = names.map(n => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join('');
+            if (names.includes(prevOwner)) ownerSelect.value = prevOwner;
+
+            filterSelect.innerHTML = `<option value="ALLE">Alle eiere (${appData.storageItems.length})</option>` +
+                names.map(n => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join('');
+            filterSelect.value = prevFilter;
+        }
+
+        function saveStorageItem(e) {
+            e.preventDefault();
+            const editId = document.getElementById('bod-edit-id').value;
+            const name = document.getElementById('bod-name').value.trim();
+            const category = document.getElementById('bod-category').value;
+            const owner = document.getElementById('bod-owner').value;
+            const size = document.getElementById('bod-size').value.trim();
+            const note = document.getElementById('bod-note').value.trim();
+            if (!name) return;
+
+            if (editId) {
+                const idx = appData.storageItems.findIndex(i => i.id === editId);
+                if (idx !== -1) {
+                    appData.storageItems[idx] = { id: editId, name, category, owner, size, note };
+                    showToast(`Oppdaterte «${name}»`);
+                }
+                cancelEditStorageItem();
+            } else {
+                appData.storageItems.unshift({
+                    id: 'b_' + Date.now(),
+                    name,
+                    category,
+                    owner,
+                    size,
+                    note
+                });
+                document.getElementById('bod-name').value = '';
+                document.getElementById('bod-size').value = '';
+                document.getElementById('bod-note').value = '';
+                showToast(`La til «${name}» i boden`);
+            }
+            saveData();
+        }
+
+        function editStorageItem(id) {
+            const item = appData.storageItems.find(i => i.id === id);
+            if (!item) return;
+
+            document.getElementById('bod-edit-id').value = item.id;
+            document.getElementById('bod-name').value = item.name;
+            document.getElementById('bod-category').value = item.category;
+            document.getElementById('bod-owner').value = item.owner;
+            document.getElementById('bod-size').value = item.size || '';
+            document.getElementById('bod-note').value = item.note || '';
+
+            document.getElementById('bod-form-title').innerHTML = `<i data-lucide="edit-3" class="w-4 h-4 text-cabin-terracotta"></i><span>Redigerer: ${escapeHtml(item.name)}</span>`;
+            document.getElementById('bod-submit-btn').innerHTML = `<i data-lucide="check" class="w-4 h-4"></i><span>Oppdater</span>`;
+            document.getElementById('bod-cancel-edit').classList.remove('hidden');
+            lucide.createIcons();
+            document.getElementById('bod-name').focus();
+        }
+
+        function cancelEditStorageItem() {
+            document.getElementById('bod-edit-id').value = '';
+            document.getElementById('bod-name').value = '';
+            document.getElementById('bod-size').value = '';
+            document.getElementById('bod-note').value = '';
+
+            document.getElementById('bod-form-title').innerHTML = `<i data-lucide="plus-circle" class="w-4 h-4 text-cabin-forest"></i><span>Registrer utstyr i boden</span>`;
+            document.getElementById('bod-submit-btn').innerHTML = `<i data-lucide="save" class="w-4 h-4"></i><span>Legg i boden</span>`;
+            document.getElementById('bod-cancel-edit').classList.add('hidden');
+            lucide.createIcons();
+        }
+
+        function deleteStorageItem(id) {
+            appData.storageItems = appData.storageItems.filter(i => i.id !== id);
+            if (document.getElementById('bod-edit-id').value === id) {
+                cancelEditStorageItem();
+            }
+            saveData();
+            showToast('Utstyr slettet fra boden');
+        }
+
+        function setStorageCategoryFilter(cat) {
+            storageCatFilter = cat;
+            document.querySelectorAll('.bod-cat-btn').forEach(btn => {
+                if (btn.dataset.cat === cat) {
+                    btn.className = 'bod-cat-btn px-3.5 py-2 rounded-xl text-xs font-semibold bg-cabin-forest text-white whitespace-nowrap transition';
+                } else {
+                    btn.className = 'bod-cat-btn px-3.5 py-2 rounded-xl text-xs font-semibold bg-white text-cabin-slate border border-cabin-wood/40 whitespace-nowrap transition';
+                }
+            });
+            renderStorageItems();
+        }
+
+        function getStorageBadge(cat) {
+            if (cat === 'Langrennsski') return { emoji: '🎿', cls: 'bg-emerald-50 text-emerald-800 border-emerald-200' };
+            if (cat === 'Alpin / Topptur') return { emoji: '⛷️', cls: 'bg-sky-50 text-sky-800 border-sky-200' };
+            if (cat === 'Skistøvler' || cat === 'Langrennsko') return { emoji: '🥾', cls: 'bg-amber-50 text-amber-800 border-amber-200' };
+            return { emoji: '🥢', cls: 'bg-stone-100 text-stone-800 border-stone-200' };
+        }
+
+        function renderStorageItems() {
+            syncStorageOwnerDropdowns();
+            const q = (document.getElementById('bod-search')?.value || '').toLowerCase();
+            const ownerFilter = document.getElementById('bod-filter-owner')?.value || 'ALLE';
+
+            const filtered = appData.storageItems.filter(item => {
+                const matchCat = storageCatFilter === 'ALLE' || item.category === storageCatFilter;
+                const matchOwner = ownerFilter === 'ALLE' || item.owner === ownerFilter;
+                const matchQ = !q ||
+                    item.name.toLowerCase().includes(q) ||
+                    item.owner.toLowerCase().includes(q) ||
+                    (item.size && item.size.toLowerCase().includes(q)) ||
+                    (item.note && item.note.toLowerCase().includes(q));
+                return matchCat && matchOwner && matchQ;
+            });
+
+            const container = document.getElementById('list-bod');
+            if (filtered.length === 0) {
+                container.innerHTML = `<div class="col-span-full bg-white p-8 rounded-2xl text-center text-sm text-cabin-muted border border-cabin-wood/40">Ingen ski, skistøvler eller bodutstyr funnet.</div>`;
+                return;
+            }
+
+            container.innerHTML = filtered.map(item => {
+                const badge = getStorageBadge(item.category);
+                return `
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-cabin-wood/40 hover:border-cabin-forest/40 transition flex flex-col justify-between gap-2">
+                        <div class="flex items-start justify-between gap-2">
+                            <div class="flex flex-wrap items-center gap-1.5">
+                                <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold border ${badge.cls}">
+                                    <span>${badge.emoji}</span>
+                                    <span>${escapeHtml(item.category)}</span>
+                                </span>
+                                <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-cabin-bg text-cabin-slate border border-cabin-wood/40">
+                                    <i data-lucide="user" class="w-3 h-3 text-cabin-forest"></i>
+                                    <span>${escapeHtml(item.owner)}</span>
+                                </span>
+                                ${item.size ? `<span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-cabin-pine text-cabin-forest">${escapeHtml(item.size)}</span>` : ''}
+                            </div>
+                            <div class="flex items-center gap-1 shrink-0">
+                                <button onclick="editStorageItem('${item.id}')" class="p-1.5 text-gray-400 hover:text-cabin-forest hover:bg-cabin-pine/60 rounded-lg transition" title="Rediger">
+                                    <i data-lucide="pencil" class="w-4 h-4"></i>
+                                </button>
+                                <button onclick="deleteStorageItem('${item.id}')" class="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition" title="Slett">
+                                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <h4 class="font-display font-bold text-base text-cabin-slate mt-1">${escapeHtml(item.name)}</h4>
+                        ${item.note ? `<p class="text-xs text-cabin-muted leading-relaxed">${escapeHtml(item.note)}</p>` : ''}
+                    </div>
+                `;
+            }).join('');
+            lucide.createIcons();
+        }
+
+        // ==================== 6. UTVASK & EXCEL IMPORT ====================
+        function toggleCleaningCheck(id) {
+            const task = appData.cleaningChecklist.find(t => t.id === id);
+            if (!task) return;
+            task.done = !task.done;
+            saveData();
+        }
+
+        function addCleaningTask(e) {
+            e.preventDefault();
+            const room = document.getElementById('utvask-room').value;
+            const taskText = document.getElementById('utvask-task').value.trim();
+            if (!taskText) return;
+
+            appData.cleaningChecklist.push({
+                id: 'u_' + Date.now(),
+                room,
+                task: taskText,
+                done: false
+            });
+            document.getElementById('utvask-task').value = '';
+            saveData();
+            showToast('Nytt utvaskpunkt lagt til');
+        }
+
+        function deleteCleaningTask(id) {
+            appData.cleaningChecklist = appData.cleaningChecklist.filter(t => t.id !== id);
+            saveData();
+            showToast('Punkt slettet');
+        }
+
+        function resetCleaningChecks() {
+            appData.cleaningChecklist.forEach(t => t.done = false);
+            saveData();
+            showToast('Alle avkrysninger er nullstilt');
+        }
+
+        function renderCleaning() {
+            const total = appData.cleaningChecklist.length;
+            const done = appData.cleaningChecklist.filter(t => t.done).length;
+            const pct = total === 0 ? 0 : Math.round((done / total) * 100);
+
+            document.getElementById('utvask-progress-text').textContent = `${done} av ${total} oppgaver fullført`;
+            document.getElementById('utvask-progress-percent').textContent = `${pct}%`;
+            document.getElementById('utvask-progress-bar').style.width = `${pct}%`;
+
+            // Grupper etter rom
+            const roomsMap = {};
+            appData.cleaningChecklist.forEach(item => {
+                const r = item.room || 'Generelt';
+                if (!roomsMap[r]) roomsMap[r] = [];
+                roomsMap[r].push(item);
+            });
+
+            const container = document.getElementById('cleaning-checklist-container');
+            const roomNames = Object.keys(roomsMap);
+            if (roomNames.length === 0) {
+                container.innerHTML = `<div class="col-span-full bg-white p-8 rounded-2xl text-center text-sm text-cabin-muted border border-cabin-wood/40">Ingen utvaskpunkter ennå. Legg til punkter ovenfor eller importer fra Excel.</div>`;
+                return;
+            }
+
+            container.innerHTML = roomNames.map(room => {
+                const tasks = roomsMap[room];
+                const roomDone = tasks.filter(t => t.done).length;
+                return `
+                    <div class="bg-white rounded-2xl p-5 shadow-sm border border-cabin-wood/40 space-y-3">
+                        <div class="flex items-center justify-between border-b border-gray-100 pb-2.5">
+                            <h3 class="font-display font-bold text-base text-cabin-slate">${escapeHtml(room)}</h3>
+                            <span class="text-xs font-bold px-2.5 py-0.5 rounded-full ${roomDone === tasks.length ? 'bg-emerald-100 text-emerald-800' : 'bg-cabin-bg text-cabin-muted'}">
+                                ${roomDone} / ${tasks.length}
+                            </span>
+                        </div>
+                        <div class="space-y-2">
+                            ${tasks.map(t => `
+                                <div class="flex items-start justify-between gap-2 p-2.5 rounded-xl hover:bg-cabin-bg/80 transition group">
+                                    <label class="flex items-start gap-3 cursor-pointer flex-1 select-none">
+                                        <input type="checkbox" ${t.done ? 'checked' : ''} onchange="toggleCleaningCheck('${t.id}')" class="mt-0.5 w-4 h-4 accent-cabin-forest rounded cursor-pointer">
+                                        <span class="text-sm leading-snug ${t.done ? 'line-through text-cabin-muted' : 'text-cabin-slate font-medium'}">${escapeHtml(t.task)}</span>
+                                    </label>
+                                    <button onclick="deleteCleaningTask('${t.id}')" class="p-1 text-gray-300 hover:text-red-600 rounded transition shrink-0" title="Slett punkt">
+                                        <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                                    </button>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            lucide.createIcons();
+        }
+
+        // Excel Modal-funksjoner
+        function openExcelModal() {
+            pendingExcelItems = [];
+            document.getElementById('excel-file-input').value = '';
+            document.getElementById('excel-paste-area').value = '';
+            document.getElementById('excel-preview-wrapper').classList.add('hidden');
+            document.getElementById('btn-confirm-excel').disabled = true;
+            document.getElementById('excel-modal').classList.remove('hidden');
+            document.getElementById('excel-modal').classList.add('flex');
+            lucide.createIcons();
+        }
+
+        function closeExcelModal() {
+            document.getElementById('excel-modal').classList.add('hidden');
+            document.getElementById('excel-modal').classList.remove('flex');
+        }
+
+        function updateExcelPreview(items) {
+            pendingExcelItems = items;
+            const wrapper = document.getElementById('excel-preview-wrapper');
+            const listEl = document.getElementById('excel-preview-list');
+            const countEl = document.getElementById('excel-preview-count');
+            const confirmBtn = document.getElementById('btn-confirm-excel');
+
+            if (items.length === 0) {
+                wrapper.classList.add('hidden');
+                confirmBtn.disabled = true;
+                return;
+            }
+
+            wrapper.classList.remove('hidden');
+            confirmBtn.disabled = false;
+            countEl.textContent = `${items.length} punkter klare for import:`;
+            listEl.innerHTML = items.map(it => `
+                <div class="px-3 py-2 flex items-center justify-between gap-2">
+                    <span class="font-semibold text-cabin-forest shrink-0">[${escapeHtml(it.room)}]</span>
+                    <span class="text-cabin-slate truncate flex-1">${escapeHtml(it.task)}</span>
+                </div>
+            `).join('');
+        }
+
+        function parseRowsToCleaningItems(rows) {
+            const parsed = [];
+            const headerKeywords = ['rom', 'område', 'oppgave', 'punkt', 'sjekkliste', 'beskrivelse', 'status'];
+
+            rows.forEach((cols, index) => {
+                const cleanCols = cols.map(c => String(c ?? '').trim()).filter(Boolean);
+                if (cleanCols.length === 0) return;
+
+                // Hopp over eventuelle overskriftsrader på rad 1
+                if (index === 0 && cleanCols.every(c => headerKeywords.includes(c.toLowerCase()))) {
+                    return;
+                }
+
+                if (cleanCols.length === 1) {
+                    parsed.push({ room: 'Generelt', task: cleanCols[0] });
+                } else {
+                    parsed.push({ room: cleanCols[0], task: cleanCols[1] });
+                }
+            });
+            return parsed;
+        }
+
+        function handleExcelFileUpload(e) {
+            const file = e.target.files?.[0];
+            if (!file) return;
+
+            if (typeof XLSX === 'undefined') {
+                showToast('Excel-leser kunne ikke lastes. Prøv kopier & lim inn.');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                try {
+                    const data = new Uint8Array(evt.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const rows = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+                    const items = parseRowsToCleaningItems(rows);
+                    updateExcelPreview(items);
+                } catch (err) {
+                    console.error(err);
+                    showToast('Kunne ikke lese Excel-filen. Sjekk formatet.');
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function parsePastedExcelText() {
+            const raw = document.getElementById('excel-paste-area').value;
+            if (!raw.trim()) {
+                updateExcelPreview([]);
+                return;
+            }
+            const lines = raw.split(/\r?\n/);
+            const rows = lines.map(line => line.includes('\t') ? line.split('\t') : line.split(';'));
+            const items = parseRowsToCleaningItems(rows);
+            updateExcelPreview(items);
+        }
+
+        function confirmExcelImport() {
+            if (pendingExcelItems.length === 0) return;
+            const mode = document.querySelector('input[name="excel-import-mode"]:checked')?.value || 'append';
+
+            const newEntries = pendingExcelItems.map((it, idx) => ({
+                id: 'u_imp_' + Date.now() + '_' + idx,
+                room: it.room,
+                task: it.task,
+                done: false
+            }));
+
+            if (mode === 'replace') {
+                appData.cleaningChecklist = newEntries;
+            } else {
+                appData.cleaningChecklist.push(...newEntries);
+            }
+
+            closeExcelModal();
+            saveData();
+            showToast(`Importerte ${newEntries.length} punkter til utvasklisten!`);
+        }
+
+        // ==================== 7. VEDLIKEHOLD ====================
+        function addMaintenanceItem(e) {
+            e.preventDefault();
+            const date = document.getElementById('maint-date').value;
+            const category = document.getElementById('maint-category').value;
+            const title = document.getElementById('maint-title').value.trim();
+            const doneBy = document.getElementById('maint-by').value.trim() || 'Familien';
+            const details = document.getElementById('maint-details').value.trim();
+            if (!date || !title) return;
+
+            appData.maintenanceLog.unshift({
+                id: 'v_' + Date.now(),
+                date,
+                category,
+                title,
+                doneBy,
+                details
+            });
+
+            document.getElementById('maint-title').value = '';
+            document.getElementById('maint-details').value = '';
+            saveData();
+            showToast('Vedlikehold lagret i loggen');
+        }
+
+        function deleteMaintenanceItem(id) {
+            appData.maintenanceLog = appData.maintenanceLog.filter(m => m.id !== id);
+            saveData();
+            showToast('Oppføring slettet');
+        }
+
+        function setMaintFilter(cat) {
+            maintCatFilter = cat;
+            document.querySelectorAll('.maint-filter-btn').forEach(btn => {
+                if (btn.dataset.mcat === cat) {
+                    btn.className = 'maint-filter-btn px-3.5 py-2 rounded-xl text-xs font-semibold bg-cabin-forest text-white whitespace-nowrap transition';
+                } else {
+                    btn.className = 'maint-filter-btn px-3.5 py-2 rounded-xl text-xs font-semibold bg-white text-cabin-slate border border-cabin-wood/40 whitespace-nowrap transition';
+                }
+            });
+            renderMaintenance();
+        }
+
+        function renderMaintenance() {
+            const sorted = [...appData.maintenanceLog]
+                .filter(m => maintCatFilter === 'ALLE' || m.category === maintCatFilter)
+                .sort((a, b) => b.date.localeCompare(a.date));
+
+            const container = document.getElementById('maintenance-timeline');
+            if (sorted.length === 0) {
+                container.innerHTML = `<div class="bg-white p-8 rounded-2xl text-center text-sm text-cabin-muted border border-cabin-wood/40">Ingen vedlikeholdsoppføringer funnet i denne kategorien.</div>`;
+                return;
+            }
+
+            container.innerHTML = sorted.map(m => `
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-cabin-wood/40 flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                    <div class="space-y-1.5">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-cabin-pine text-cabin-forest">
+                                <i data-lucide="calendar" class="w-3 h-3"></i>
+                                <span>${formatNorwegianDate(m.date)}</span>
+                            </span>
+                            <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-cabin-bg text-cabin-slate border border-cabin-wood/40">
+                                ${escapeHtml(m.category)}
+                            </span>
+                            <span class="text-xs text-cabin-muted">Utført av: <strong class="text-cabin-slate">${escapeHtml(m.doneBy)}</strong></span>
+                        </div>
+                        <h4 class="font-display font-bold text-base text-cabin-slate">${escapeHtml(m.title)}</h4>
+                        ${m.details ? `<p class="text-sm text-cabin-muted leading-relaxed">${escapeHtml(m.details)}</p>` : ''}
+                    </div>
+                    <button onclick="deleteMaintenanceItem('${m.id}')" class="p-1.5 text-gray-400 hover:text-red-600 rounded-lg transition self-end sm:self-start shrink-0" title="Slett oppføring">
+                        <i data-lucide="trash-2" class="w-4 h-4"></i>
+                    </button>
+                </div>
+            `).join('');
+            lucide.createIcons();
+        }
+
+        // ==================== 8. INNSTILLINGER & BACKUP ====================
+        function updateCabinName(e) {
+            e.preventDefault();
+            const newName = document.getElementById('settings-cabin-name').value.trim();
+            if (!newName) return;
+            appData.cabinName = newName;
+            saveData();
+            showToast(`Navn oppdatert til «${newName}»`);
+        }
+
+        function exportBackupJSON() {
+            const blob = new Blob([JSON.stringify(appData, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            const dateStr = new Date().toISOString().slice(0, 10);
+            a.href = url;
+            a.download = `${(appData.cabinName || 'fjellheimen').toLowerCase().replace(/\s+/g, '-')}-backup-${dateStr}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast('Sikkerhetskopi lastet ned');
+        }
+
+        function importBackupJSON(e) {
+            const file = e.target.files?.[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                try {
+                    const imported = JSON.parse(evt.target.result);
+                    if (imported && typeof imported === 'object') {
+                        appData = {
+                            cabinName: imported.cabinName || defaultData.cabinName,
+                            fridgeItems: Array.isArray(imported.fridgeItems) ? imported.fridgeItems : [],
+                            dryGoods: Array.isArray(imported.dryGoods) ? imported.dryGoods : [],
+                            familyMembers: Array.isArray(imported.familyMembers) && imported.familyMembers.length > 0 ? imported.familyMembers : defaultData.familyMembers,
+                            storageItems: Array.isArray(imported.storageItems) ? imported.storageItems : [],
+                            cleaningChecklist: Array.isArray(imported.cleaningChecklist) ? imported.cleaningChecklist : [],
+                            maintenanceLog: Array.isArray(imported.maintenanceLog) ? imported.maintenanceLog : []
+                        };
+                        activeMemberId = appData.familyMembers[0]?.id || null;
+                        saveData();
+                        showToast('Sikkerhetskopi gjenopprettet!');
+                    }
+                } catch (err) {
+                    showToast('Ugyldig backup-fil');
+                }
+            };
+            reader.readAsText(file);
+            e.target.value = '';
+        }
+
+        function confirmResetAll() {
+            const btn = document.getElementById('btn-reset-all');
+            if (!resetConfirmPending) {
+                resetConfirmPending = true;
+                btn.textContent = 'Klikk én gang til for å bekrefte nullstilling';
+                btn.classList.add('bg-red-600', 'text-white');
+                setTimeout(() => {
+                    resetConfirmPending = false;
+                    btn.textContent = 'Tilbakestill alt innhold';
+                    btn.classList.remove('bg-red-600', 'text-white');
+                }, 4000);
+                return;
+            }
+            resetConfirmPending = false;
+            btn.textContent = 'Tilbakestill alt innhold';
+            btn.classList.remove('bg-red-600', 'text-white');
+            appData = JSON.parse(JSON.stringify(defaultData));
+            activeMemberId = appData.familyMembers[0].id;
+            saveData();
+            showToast('Alt innhold er tilbakestilt til standard');
+        }
+
+        // ==================== OPPSTART ====================
+        function updateAllViews() {
+            renderDashboard();
+            renderFridge();
+            renderDryGoods();
+            renderClothes();
+            renderStorageItems();
+            renderCleaning();
+            renderMaintenance();
+            lucide.createIcons();
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            setMobileMenu(false, false);
+            // Sett dagens dato i vedlikeholdsskjemaet
+            const maintDateInput = document.getElementById('maint-date');
+            if (maintDateInput) {
+                maintDateInput.value = new Date().toISOString().slice(0, 10);
+            }
+            switchTab(location.hash === '#inneholdsliste' ? 'inneholdsliste' : 'oversikt');
+            updateAllViews();
+        });
+
+        window.addEventListener('hashchange', () => {
+            if (location.hash === '#inneholdsliste') switchTab('inneholdsliste');
+            else if (currentTab === 'inneholdsliste') switchTab('oversikt');
+        });
+    </script>
+</body>
+</html>
