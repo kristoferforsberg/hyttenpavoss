@@ -324,3 +324,11 @@
             <div class="item-row" style="flex-direction: column; align-items: flex-start;">
               <div style="display:flex; justify-content:space-between; width:100%;">
                 <strong>${log.title}</strong>
+${log.date}
+
+${log.category} • Utført av: ${log.doneBy}
+${log.details ? <div class="note" style="color: var(--text); margin-top:4px;">${log.details}</div> : ''}
+
+).join('')} </div> ;
+}
+loadData();
